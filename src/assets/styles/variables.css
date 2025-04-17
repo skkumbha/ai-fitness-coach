@@ -1,0 +1,78 @@
+:root {
+  /* Main color palette */
+  --primary-color: #4CAF50;        /* Green - Primary brand color */
+  --primary-light: #80E27E;        /* Light green - Highlight */
+  --primary-dark: #087f23;         /* Dark green - Accents */
+  
+  --secondary-color: #2196F3;      /* Blue - Secondary brand color */
+  --secondary-light: #6EC6FF;      /* Light blue - Secondary highlight */
+  --secondary-dark: #0069C0;       /* Dark blue - Secondary accents */
+  
+  --accent-color: #FF5722;         /* Orange - Call to action */
+  
+  /* Neutral colors */
+  --background-color: #FAFAFA;     /* Off-white - Main background */
+  --card-background: #FFFFFF;      /* White - Card background */
+  --text-color: #212121;           /* Near black - Primary text */
+  --text-secondary: #757575;       /* Medium gray - Secondary text */
+  --text-tertiary: #9E9E9E;        /* Light gray - Hint text */
+  --border-color: #E0E0E0;         /* Light gray - Borders */
+  
+  /* Status colors */
+  --success-color: #4CAF50;        /* Green - Success messages */
+  --info-color: #2196F3;           /* Blue - Information messages */
+  --warning-color: #FFC107;        /* Amber - Warning messages */
+  --error-color: #F44336;          /* Red - Error messages */
+  
+  /* Typography */
+  --font-family: 'Montserrat', sans-serif;
+  --font-size-xs: 0.75rem;         /* 12px */
+  --font-size-sm: 0.875rem;        /* 14px */
+  --font-size-md: 1rem;            /* 16px */
+  --font-size-lg: 1.25rem;         /* 20px */
+  --font-size-xl: 1.5rem;          /* 24px */
+  --font-size-xxl: 2rem;           /* 32px */
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;           /* 4px */
+  --spacing-sm: 0.5rem;            /* 8px */
+  --spacing-md: 1rem;              /* 16px */
+  --spacing-lg: 1.5rem;            /* 24px */
+  --spacing-xl: 2rem;              /* 32px */
+  --spacing-xxl: 3rem;             /* 48px */
+  
+  /* Border radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 16px;
+  --border-radius-round: 50%;
+  
+  /* Box shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.10);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
+  
+  /* Z-index layers */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+}
+
+/* Dark theme variables (for future implementation) */
+.dark-theme {
+  --background-color: #121212;
+  --card-background: #1E1E1E;
+  --text-color: #E0E0E0;
+  --text-secondary: #BDBDBD;
+  --text-tertiary: #9E9E9E;
+  --border-color: #424242;
+}
