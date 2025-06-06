@@ -6,7 +6,7 @@ import API from './index';
  */
 export const getProfile = async () => {
   try {
-    const response = await API.get('/user/profile');
+    const response = await API.get('/auth/user/profile');
     return response.data;
   } catch (error) {
     throw new Error(error.message || 'Failed to fetch user profile.');
@@ -20,7 +20,7 @@ export const getProfile = async () => {
  */
 export const updateProfile = async (profileData) => {
   try {
-    const response = await API.put('/user/profile', profileData);
+    const response = await API.put('/auth/user/profile', profileData);
     return response.data;
   } catch (error) {
     throw new Error(error.message || 'Failed to update profile.');
@@ -37,7 +37,7 @@ export const updateProfilePicture = async (imageFile) => {
     const formData = new FormData();
     formData.append('profilePicture', imageFile);
     
-    const response = await API.post('/user/profile/picture', formData, {
+    const response = await API.post('/auth/user/profile/picture', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -56,7 +56,7 @@ export const updateProfilePicture = async (imageFile) => {
  */
 export const completeOnboarding = async (onboardingData) => {
   try {
-    const response = await API.post('/user/onboarding', onboardingData);
+    const response = await API.post('/auth/user/onboarding', onboardingData);
     return response.data;
   } catch (error) {
     throw new Error(error.message || 'Failed to complete onboarding.');
@@ -69,7 +69,7 @@ export const completeOnboarding = async (onboardingData) => {
  */
 export const getFitnessGoals = async () => {
   try {
-    const response = await API.get('/user/goals');
+    const response = await API.get('/auth/user/goals');
     return response.data;
   } catch (error) {
     throw new Error(error.message || 'Failed to fetch fitness goals.');

@@ -202,8 +202,11 @@ export default {
       try {
         await this.$store.dispatch('submitOnboarding', this.formData);
         
+        // Wait for the next tick to ensure store updates are processed
+        await this.$nextTick();
+        
         // Redirect to dashboard after successful onboarding
-        this.$router.push('/dashboard');
+        this.$router.push({ name: 'dashboard' });
       } catch (error) {
         this.errorMessage = error.message || 'Failed to complete onboarding. Please try again.';
         window.scrollTo(0, 0);

@@ -13,21 +13,21 @@
         <div class="auth-body">
           <form @submit.prevent="handleLogin" class="auth-form">
             <div class="form-group">
-              <label for="email" class="form-label">Email Address</label>
+              <label for="userName" class="form-label">Username</label>
               <div class="input-with-icon">
-                <i class="fas fa-envelope"></i>
+                <i class="fas fa-user"></i>
                 <input 
-                  id="email"
-                  v-model="email"
-                  type="email"
+                  id="userName"
+                  v-model="userName"
+                  type="text"
                   class="form-control"
-                  placeholder="Enter your email"
+                  placeholder="Enter your username"
                   required
                   :disabled="loading"
                 />
               </div>
-              <div v-if="validationErrors.email" class="error-message">
-                {{ validationErrors.email }}
+              <div v-if="validationErrors.userName" class="error-message">
+                {{ validationErrors.userName }}
               </div>
             </div>
             
@@ -137,7 +137,7 @@ export default {
   name: 'LoginPage',
   data() {
     return {
-      email: '',
+      userName: '',
       password: '',
       showPassword: false,
       loading: false,
@@ -169,11 +169,14 @@ export default {
       this.validationErrors = {};
       let isValid = true;
       
-      if (!this.email) {
-        this.validationErrors.email = 'Email is required';
+      if (!this.userName) {
+        this.validationErrors.userName = 'Username is required';
         isValid = false;
-      } else if (!/\S+@\S+\.\S+/.test(this.email)) {
-        this.validationErrors.email = 'Please enter a valid email address';
+      } else if (this.userName.length < 3) {
+        this.validationErrors.userName = 'Username must be at least 3 characters long';
+        isValid = false;
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(this.userName)) {
+        this.validationErrors.userName = 'Username can only contain letters, numbers, underscores, and hyphens';
         isValid = false;
       }
       
@@ -193,7 +196,7 @@ export default {
       
       try {
         await this.$store.dispatch('loginUser', {
-          email: this.email,
+          userName: this.userName,
           password: this.password
         });
         

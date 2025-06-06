@@ -21,8 +21,8 @@ import {
 export default createStore({
   state: {
     // Authentication
-    token: null,
-    isAuthenticated: false,
+    token: localStorage.getItem('token'),
+    isAuthenticated: !!localStorage.getItem('token'),
     
     // User data
     user: null,
@@ -55,13 +55,17 @@ export default createStore({
   mutations: {
     // Auth mutations
     setToken(state, token) {
+      console.log('🔵 [Store] Setting token in store and localStorage');
       state.token = token;
       state.isAuthenticated = !!token;
       if (token) {
         localStorage.setItem('token', token);
+        console.log('✅ [Store] Token stored in localStorage');
       } else {
         localStorage.removeItem('token');
+        console.log('✅ [Store] Token removed from localStorage');
       }
+      console.log('✅ [Store] Authentication state:', state.isAuthenticated);
     },
     
     // User mutations
@@ -100,17 +104,20 @@ export default createStore({
     },
     clearError(state) {
       state.error = null;
+    },
+    setOnboardingCompleted(state, completed) {
+      state.hasCompletedOnboarding = completed;
     }
   },
   
   actions: {
     // Auth actions
-    async loginUser({ commit, dispatch }, { email, password }) {
+    async loginUser({ commit, dispatch }, { userName, password }) {
       commit('setLoading', true);
       commit('clearError');
       
       try {
-        const response = await login(email, password);
+        const response = await login(userName, password);
         commit('setToken', response.token);
         await dispatch('fetchUserProfile');
       } catch (error) {
@@ -121,15 +128,26 @@ export default createStore({
       }
     },
     
-    async signupUser({ commit }, userData) {
+    async signupUser({ commit, dispatch }, userData) {
       commit('setLoading', true);
       commit('clearError');
       
       try {
+        console.log('🔵 [Store] Starting signup process...');
         const response = await signup(userData);
+        console.log('✅ [Store] Signup successful, response:', response);
+        
+        console.log('🔵 [Store] Setting token...');
         commit('setToken', response.token);
-        commit('setUser', response.user);
+        console.log('✅ [Store] Token set in store and localStorage');
+        
+        console.log('🔵 [Store] Starting profile fetch...');
+        await dispatch('fetchUserProfile');
+        console.log('✅ [Store] Profile fetch completed');
+        
+        return response;
       } catch (error) {
+        console.error('❌ [Store] Signup error:', error);
         commit('setError', error.message || 'Failed to sign up');
         throw error;
       } finally {
@@ -155,13 +173,20 @@ export default createStore({
     },
     
     // User profile actions
-    async fetchUserProfile({ commit }) {
+    async fetchUserProfile({ commit, state }) {
       commit('setLoading', true);
       
       try {
+        console.log('🔵 [Store] Fetching user profile...');
+        console.log('🔵 [Store] Current token:', state.token);
+        
         const user = await getProfile();
+        console.log('✅ [Store] Profile data received:', user);
+        
         commit('setUser', user);
+        console.log('✅ [Store] User data set in store');
       } catch (error) {
+        console.error('❌ [Store] Profile fetch error:', error);
         commit('setError', error.message || 'Failed to fetch user profile');
         throw error;
       } finally {
@@ -191,6 +216,8 @@ export default createStore({
       try {
         const user = await completeOnboarding(onboardingData);
         commit('setUser', user);
+        commit('setOnboardingCompleted', true);
+        return user;
       } catch (error) {
         commit('setError', error.message || 'Failed to complete onboarding');
         throw error;

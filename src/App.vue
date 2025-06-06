@@ -30,7 +30,11 @@ export default {
     const token = localStorage.getItem('token');
     if (token) {
       this.$store.commit('setToken', token);
-      this.$store.dispatch('fetchUserProfile');
+      this.$store.dispatch('fetchUserProfile').catch(error => {
+        console.error('Failed to fetch user profile:', error);
+        // If profile fetch fails, clear the token
+        this.$store.commit('setToken', null);
+      });
     }
   }
 };

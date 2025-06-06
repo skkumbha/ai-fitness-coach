@@ -6,9 +6,9 @@ import API from './index';
  * @param {string} password - User password
  * @returns {Promise} - Promise with auth token and user data
  */
-export const login = async (email, password) => {
+export const login = async (userName, password) => {
   try {
-    const response = await API.post('/auth/login', { email, password });
+    const response = await API.post('/auth/login', { userName, password });
     return response.data;
   } catch (error) {
     throw new Error(error.message || 'Login failed. Please check your credentials.');

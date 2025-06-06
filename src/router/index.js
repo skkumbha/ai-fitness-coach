@@ -92,7 +92,7 @@ router.beforeEach((to, from, next) => {
     next({ name: 'dashboard' });
   }
   // Handle onboarding requirement
-  else if (isAuthenticated && !hasCompletedOnboarding && to.name !== 'onboarding') {
+  else if (isAuthenticated && !hasCompletedOnboarding && to.name !== 'onboarding' && to.name !== 'signup') {
     next({ name: 'onboarding' });
   }
   // Handle users who have already completed onboarding

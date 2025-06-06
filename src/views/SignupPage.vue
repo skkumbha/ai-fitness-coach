@@ -47,6 +47,25 @@
             </div>
             
             <div class="form-group">
+              <label for="userName" class="form-label">Username</label>
+              <div class="input-with-icon">
+                <i class="fas fa-user"></i>
+                <input 
+                  id="userName"
+                  v-model="userName"
+                  type="text"
+                  class="form-control"
+                  placeholder="Choose a username"
+                  required
+                  :disabled="loading"
+                />
+              </div>
+              <div v-if="validationErrors.userName" class="error-message">
+                {{ validationErrors.userName }}
+              </div>
+            </div>
+            
+            <div class="form-group">
               <label for="email" class="form-label">Email Address</label>
               <div class="input-with-icon">
                 <i class="fas fa-envelope"></i>
@@ -237,6 +256,7 @@ export default {
     return {
       firstName: '',
       lastName: '',
+      userName: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -310,6 +330,18 @@ export default {
         this.validationErrors.lastName = 'Last name is required';
         isValid = false;
       }
+
+      // Username validation
+      if (!this.userName.trim()) {
+        this.validationErrors.userName = 'Username is required';
+        isValid = false;
+      } else if (this.userName.length < 3) {
+        this.validationErrors.userName = 'Username must be at least 3 characters long';
+        isValid = false;
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(this.userName)) {
+        this.validationErrors.userName = 'Username can only contain letters, numbers, underscores, and hyphens';
+        isValid = false;
+      }
       
       // Email validation
       if (!this.email.trim()) {
@@ -358,16 +390,21 @@ export default {
         const userData = {
           firstName: this.firstName,
           lastName: this.lastName,
+          userName: this.userName,
           email: this.email,
           password: this.password
         };
         
+        console.log('Starting signup process...');
         // Dispatch signup action
-        await this.$store.dispatch('signupUser', userData);
+        const response = await this.$store.dispatch('signupUser', userData);
+        console.log('Signup successful:', response);
         
-        // After successful signup, redirect to onboarding
-        this.$router.push('/onboarding');
+        // After successful signup, redirect to profile
+        console.log('Redirecting to profile...');
+        await this.$router.push('/profile');
       } catch (error) {
+        console.error('Signup error:', error);
         // Display error message
         this.errorMessage = error.message || 'Failed to create account. Please try again.';
       } finally {
