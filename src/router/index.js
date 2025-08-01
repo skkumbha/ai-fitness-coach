@@ -79,8 +79,22 @@ const router = createRouter({
 });
 
 // Navigation guard for auth-protected routes
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const isAuthenticated = store.getters.isAuthenticated;
+  
+  // If user is authenticated but we don't have their profile yet, fetch it first
+  if (isAuthenticated && !store.state.user) {
+    try {
+      await store.dispatch('fetchUserProfile');
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      // If profile fetch fails, redirect to login
+      store.dispatch('logoutUser');
+      next({ name: 'login', query: { redirect: to.fullPath } });
+      return;
+    }
+  }
+  
   const hasCompletedOnboarding = store.getters.hasCompletedOnboarding;
 
   // Handle authentication requirements
