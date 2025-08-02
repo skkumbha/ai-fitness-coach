@@ -28,11 +28,11 @@ print_warning() {
 
 # Step 1: Stop container
 print_status "🛑 Stopping container..."
-docker stop $CONTAINER_NAME 2>/dev/null || true
+docker stop "$CONTAINER_NAME" 2>/dev/null || true
 
 # Step 2: Remove container
 print_status "🗑️  Removing container..."
-docker rm $CONTAINER_NAME 2>/dev/null || true
+docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
 # Step 3: Check if user wants to remove image too
 echo ""
