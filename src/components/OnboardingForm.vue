@@ -6,7 +6,8 @@
         <label for="gender" class="form-label">Gender</label>
         <select 
           id="gender"
-          v-model="localFormData.gender"
+          :value="localFormData.gender"
+          @change="updateField('gender', $event.target.value)"
           class="form-select"
           required
         >
@@ -22,7 +23,8 @@
         <label for="birthdate" class="form-label">Birth Date</label>
         <input 
           id="birthdate"
-          v-model="localFormData.birthdate"
+          :value="localFormData.birthdate"
+          @input="updateField('birthdate', $event.target.value)"
           type="date"
           class="form-control"
           required
@@ -34,7 +36,8 @@
           <label for="height" class="form-label">Height (cm)</label>
           <input 
             id="height"
-            v-model="localFormData.height"
+            :value="localFormData.height"
+            @input="updateField('height', $event.target.value)"
             type="number"
             min="0"
             step="1"
@@ -48,7 +51,8 @@
           <label for="weight" class="form-label">Weight (kg)</label>
           <input 
             id="weight"
-            v-model="localFormData.weight"
+            :value="localFormData.weight"
+            @input="updateField('weight', $event.target.value)"
             type="number"
             min="0"
             step="0.1"
@@ -66,7 +70,8 @@
         <label for="fitnessLevel" class="form-label">Current Fitness Level</label>
         <select 
           id="fitnessLevel"
-          v-model="localFormData.fitnessLevel"
+          :value="localFormData.fitnessLevel"
+          @change="updateField('fitnessLevel', $event.target.value)"
           class="form-select"
           required
         >
@@ -82,7 +87,8 @@
         <label for="primaryGoal" class="form-label">Primary Fitness Goal</label>
         <select 
           id="primaryGoal"
-          v-model="localFormData.primaryGoal"
+          :value="localFormData.primaryGoal"
+          @change="updateField('primaryGoal', $event.target.value)"
           class="form-select"
           required
         >
@@ -101,7 +107,8 @@
           <label for="targetWeight" class="form-label">Target Weight (kg)</label>
           <input 
             id="targetWeight"
-            v-model="localFormData.targetWeight"
+            :value="localFormData.targetWeight"
+            @input="updateField('targetWeight', $event.target.value)"
             type="number"
             min="0"
             step="0.1"
@@ -115,7 +122,8 @@
           <label for="weeklyWorkouts" class="form-label">Weekly Workout Sessions</label>
           <select 
             id="weeklyWorkouts"
-            v-model="localFormData.weeklyWorkouts"
+            :value="localFormData.weeklyWorkouts"
+            @change="updateField('weeklyWorkouts', $event.target.value)"
             class="form-select"
             required
           >
@@ -139,7 +147,8 @@
               :id="`workout-${workout.value}`"
               type="checkbox"
               :value="workout.value"
-              v-model="localFormData.workoutPreferences"
+              :checked="localFormData.workoutPreferences && localFormData.workoutPreferences.includes(workout.value)"
+              @change="updateCheckboxArray('workoutPreferences', workout.value, $event.target.checked)"
             />
             <label :for="`workout-${workout.value}`">{{ workout.label }}</label>
           </div>
@@ -150,7 +159,8 @@
         <label for="workoutLocation" class="form-label">Preferred Workout Location</label>
         <select 
           id="workoutLocation"
-          v-model="localFormData.workoutLocation"
+          :value="localFormData.workoutLocation"
+          @change="updateField('workoutLocation', $event.target.value)"
           class="form-select"
           required
         >
@@ -170,7 +180,8 @@
               :id="`diet-${diet.value}`"
               type="checkbox"
               :value="diet.value"
-              v-model="localFormData.dietaryRestrictions"
+              :checked="localFormData.dietaryRestrictions && localFormData.dietaryRestrictions.includes(diet.value)"
+              @change="updateCheckboxArray('dietaryRestrictions', diet.value, $event.target.checked)"
             />
             <label :for="`diet-${diet.value}`">{{ diet.label }}</label>
           </div>
@@ -189,7 +200,8 @@
               :id="`day-${day.value}`"
               type="checkbox"
               :value="day.value"
-              v-model="localFormData.availableDays"
+              :checked="localFormData.availableDays && localFormData.availableDays.includes(day.value)"
+              @change="updateCheckboxArray('availableDays', day.value, $event.target.checked)"
             />
             <label :for="`day-${day.value}`">{{ day.label }}</label>
           </div>
@@ -204,7 +216,8 @@
               :id="`time-${time.value}`"
               type="checkbox"
               :value="time.value"
-              v-model="localFormData.preferredTimes"
+              :checked="localFormData.preferredTimes && localFormData.preferredTimes.includes(time.value)"
+              @change="updateCheckboxArray('preferredTimes', time.value, $event.target.checked)"
             />
             <label :for="`time-${time.value}`">{{ time.label }}</label>
           </div>
@@ -215,7 +228,8 @@
         <label for="sessionDuration" class="form-label">Preferred Session Duration</label>
         <select 
           id="sessionDuration"
-          v-model="localFormData.sessionDuration"
+          :value="localFormData.sessionDuration"
+          @change="updateField('sessionDuration', $event.target.value)"
           class="form-select"
           required
         >
@@ -293,20 +307,41 @@ export default {
       this.localFormData = { ...this.formData };
     },
     
-    // Watch for changes in form data from parent
+    // Watch for changes in form data from parent (only when not from local changes)
     formData: {
-      handler(newVal) {
-        this.localFormData = { ...newVal };
+      handler(newVal, oldVal) {
+        // Only update if the change didn't originate from localFormData
+        if (JSON.stringify(newVal) !== JSON.stringify(this.localFormData)) {
+          this.localFormData = { ...newVal };
+        }
       },
       deep: true
+    }
+  },
+  
+  methods: {
+    // Method to handle local form changes and emit to parent
+    handleFormChange() {
+      this.$emit('update:form', { ...this.localFormData });
     },
     
-    // Watch for local changes to emit to parent
-    localFormData: {
-      handler(newVal) {
-        this.$emit('update:form', newVal);
-      },
-      deep: true
+    // Method to update individual form fields
+    updateField(key, value) {
+      this.localFormData[key] = value;
+      this.handleFormChange();
+    },
+    
+    // Method to update checkbox arrays
+    updateCheckboxArray(key, value, checked) {
+      const currentArray = this.localFormData[key] || [];
+      if (checked) {
+        if (!currentArray.includes(value)) {
+          this.localFormData[key] = [...currentArray, value];
+        }
+      } else {
+        this.localFormData[key] = currentArray.filter(item => item !== value);
+      }
+      this.handleFormChange();
     }
   }
 };

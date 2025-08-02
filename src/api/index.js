@@ -4,8 +4,7 @@ import router from '@/router';
 
 // Create axios instance with default config
 const API = axios.create({
-  baseURL: 'http://localhost:8080/api', // Backend API URL
-  // baseURL: import.meta.env.VITE_API_URL || 'https://your-domain.com/api', // Production API URL
+  baseURL: import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8080/api' : `${window.location.protocol}//${window.location.hostname}/api`),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
