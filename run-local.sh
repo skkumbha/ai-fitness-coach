@@ -38,11 +38,11 @@ docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
 # Step 2: Remove existing image if exists
 print_status "🗑️  Removing existing local image..."
-docker rmi $IMAGE_NAME 2>/dev/null || true
+docker rmi "$IMAGE_NAME" 2>/dev/null || true
 
 # Step 3: Build Docker image locally
 print_status "📦 Building Docker image locally..."
-docker build --build-arg VITE_API_URL=http://localhost:8080/api -t $IMAGE_NAME .
+docker build --build-arg VITE_API_URL=http://localhost:8080/api -t "$IMAGE_NAME" .
 
 if [ $? -ne 0 ]; then
     print_error "❌ Docker build failed"
