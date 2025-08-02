@@ -33,8 +33,8 @@ print_error() {
 
 # Step 1: Stop and remove existing container if running
 print_status "🛑 Stopping existing container..."
-docker stop $CONTAINER_NAME 2>/dev/null || true
-docker rm $CONTAINER_NAME 2>/dev/null || true
+docker stop "$CONTAINER_NAME" 2>/dev/null || true
+docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
 # Step 2: Remove existing image if exists
 print_status "🗑️  Removing existing local image..."
