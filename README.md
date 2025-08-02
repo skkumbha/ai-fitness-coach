@@ -44,7 +44,7 @@ A personal AI fitness coach web application built with Vue.js frontend and Java 
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:3000 (Docker) or http://localhost:8081 (npm)
+   - Frontend: http://localhost:3000 (Docker or npm)
    - Backend: http://localhost:8080 (make sure backend is running)
 
 ## 🐳 Docker Deployment
