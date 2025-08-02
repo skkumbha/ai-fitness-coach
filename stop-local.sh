@@ -3,7 +3,7 @@
 echo "🛑 Stopping local Fitness Coach Frontend..."
 
 # Configuration
-CONTAINER_NAME="fitness-coach-local"
+CONTAINER_NAME="fa-f"
 IMAGE_NAME="fitness-coach-frontend-local"
 
 # Colors for output
