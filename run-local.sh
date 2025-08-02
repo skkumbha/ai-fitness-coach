@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 echo "🚀 Building and running Fitness Coach Frontend locally..."
