@@ -71,7 +71,7 @@ fi
 
 # Step 6: Show container logs
 print_status "📋 Container logs:"
-docker logs $CONTAINER_NAME
+docker logs "$CONTAINER_NAME"
 
 # Step 7: Show access information
 echo ""
