@@ -24,7 +24,7 @@ A personal AI fitness coach web application built with Vue.js frontend and Java 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/fitcoach-ai.git
+   git clone https://github.com/<owner>/fitcoach-ai.git
    cd fitcoach-ai
    ```
 
