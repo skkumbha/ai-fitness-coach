@@ -62,7 +62,7 @@ fi
 
 # Step 5: Check container status
 print_status "📊 Checking container status..."
-if docker ps | grep -q $CONTAINER_NAME; then
+if docker ps | grep -q "$CONTAINER_NAME"; then
     print_success "✅ Container is running!"
 else
     print_error "❌ Container failed to start"
