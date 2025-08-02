@@ -47,5 +47,5 @@ fi
 print_success "✅ Local development environment cleaned up!"
 echo ""
 echo "📋 Container and image status:"
-docker ps -a | grep "$CONTAINER_NAME" || echo "   No containers found"
+docker ps -a --filter name="$CONTAINER_NAME" --format "{{.ID}}\t{{.Image}}\t{{.Names}}" | grep . || echo "   No containers found"
 docker images | grep "$IMAGE_NAME" || echo "   No images found" 
