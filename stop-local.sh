@@ -40,7 +40,7 @@ read -p "Do you want to remove the local Docker image as well? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_status "🗑️  Removing local image..."
-    docker rmi $IMAGE_NAME 2>/dev/null || true
+    docker rmi "$IMAGE_NAME" 2>/dev/null || true
     print_success "✅ Local image removed!"
 fi
 
