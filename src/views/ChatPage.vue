@@ -226,7 +226,7 @@ export default {
 .chat-page {
   height: 100vh;
   overflow: hidden;
-  margin: -20px -20px -20px -20px;
+  margin: calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md));
   padding: 20px;
   box-sizing: border-box;
 }
