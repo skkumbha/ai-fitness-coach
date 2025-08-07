@@ -48,7 +48,7 @@ jobs:
           push: true
           tags: |
             ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
-            ${{ env.DOCKER_IMAGE }}:v${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_IMAGE }}:latest
           build-args: |
             VITE_API_URL=http://fit.kish.rs/api
           cache-from: type=gha
