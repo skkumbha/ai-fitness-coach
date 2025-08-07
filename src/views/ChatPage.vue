@@ -10,6 +10,18 @@
             </button>
           </div>
           
+          <div class="assistant-info">
+            <div class="assistant-avatar">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="assistant-details">
+              <h3 class="assistant-name">FitCoach AI</h3>
+              <p class="assistant-desc">
+                Your personal AI fitness coach, available 24/7 to help with workouts, nutrition, and motivation.
+              </p>
+            </div>
+          </div>
+          
           <div class="topic-list">
             <h3 class="topic-header">Popular Topics</h3>
             <div class="topic-buttons">
@@ -25,18 +37,6 @@
             </div>
           </div>
           
-          <div class="assistant-info">
-            <div class="assistant-avatar">
-              <i class="fas fa-robot"></i>
-            </div>
-            <div class="assistant-details">
-              <h3 class="assistant-name">FitCoach AI</h3>
-              <p class="assistant-desc">
-                Your personal AI fitness coach, available 24/7 to help with workouts, nutrition, and motivation.
-              </p>
-            </div>
-          </div>
-          
           <div class="sidebar-actions">
             <button class="btn btn-outline btn-block" @click="clearChat">
               <i class="fas fa-trash-alt"></i> Clear Chat
@@ -46,6 +46,7 @@
         
         <div class="chat-main">
           <ChatInterface 
+            ref="chatInterface"
             :messages="messages" 
             :loading="loading"
             @send-message="sendMessage"
@@ -109,6 +110,17 @@ export default {
       ]
     };
   },
+  watch: {
+    messages: {
+      handler() {
+        // Scroll to latest message whenever messages change
+        this.$nextTick(() => {
+          this.scrollToLatestMessage();
+        });
+      },
+      deep: true
+    }
+  },
   async mounted() {
     await this.fetchChatHistory();
     
@@ -131,6 +143,11 @@ export default {
         }
       ];
     }
+    
+    // Ensure scroll to latest message after everything is set up
+    this.$nextTick(() => {
+      this.scrollToLatestMessage();
+    });
   },
   methods: {
     async fetchChatHistory() {
@@ -139,6 +156,11 @@ export default {
       try {
         await this.$store.dispatch('fetchChatHistory');
         this.messages = this.$store.getters.chatHistory;
+        
+        // Ensure we scroll to the latest message after loading history
+        this.$nextTick(() => {
+          this.scrollToLatestMessage();
+        });
       } catch (error) {
         console.error('Error fetching chat history:', error);
       } finally {
@@ -189,6 +211,16 @@ export default {
       ];
       
       // In a real app, would also call API to clear history
+    },
+    
+    scrollToLatestMessage() {
+      // Trigger scroll to bottom in the ChatInterface component
+      this.$nextTick(() => {
+        const chatInterface = this.$refs.chatInterface;
+        if (chatInterface && chatInterface.scrollToBottom) {
+          chatInterface.scrollToBottom();
+        }
+      });
     }
   }
 };
@@ -196,29 +228,37 @@ export default {
 
 <style scoped>
 .chat-page {
-  padding: var(--spacing-md) 0;
+  height: 100vh;
+  overflow: hidden;
+  margin: -20px -20px -20px -20px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
+  height: 100%;
 }
 
 .chat-container {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: var(--spacing-md);
-  min-height: calc(100vh - 180px);
+  height: 100%;
 }
 
 .chat-sidebar {
+  display: flex;
+  flex-direction: column;
   background-color: var(--card-background);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-sm);
   padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
+  height: fit-content;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .sidebar-header {
@@ -231,7 +271,7 @@ export default {
 }
 
 .sidebar-title {
-  font-size: 1.25rem;
+  font-size: var(--font-size-lg);
   font-weight: 600;
   margin: 0;
   color: var(--text-color);
@@ -258,6 +298,7 @@ export default {
 
 .topic-list {
   margin-bottom: var(--spacing-md);
+  flex-grow: 1;
 }
 
 .topic-header {
@@ -303,7 +344,6 @@ export default {
   background-color: rgba(76, 175, 80, 0.05);
   border-radius: var(--border-radius-md);
   margin-bottom: var(--spacing-md);
-  margin-top: auto;
 }
 
 .assistant-avatar {
@@ -334,7 +374,7 @@ export default {
 }
 
 .sidebar-actions {
-  margin-top: var(--spacing-md);
+  margin-top: auto;
 }
 
 .chat-main {

@@ -86,22 +86,24 @@
       </div>
     </div>
     
-    <div class="chat-input">
-      <textarea
-        ref="messageInput"
-        v-model="newMessage"
-        class="message-textarea"
-        placeholder="Type your message here..."
-        @keydown.enter.prevent="handleEnterKey"
-        :disabled="loading"
-      ></textarea>
-      <button 
-        class="send-button" 
-        @click="sendMessage" 
-        :disabled="!canSendMessage || loading"
-      >
-        <i class="fas fa-paper-plane"></i>
-      </button>
+    <div class="chat-input-container">
+      <div class="chat-input">
+        <textarea
+          ref="messageInput"
+          v-model="newMessage"
+          class="message-textarea"
+          placeholder="Type your message here..."
+          @keydown.enter.prevent="handleEnterKey"
+          :disabled="loading"
+        ></textarea>
+        <button 
+          class="send-button" 
+          @click="sendMessage" 
+          :disabled="!canSendMessage || loading"
+        >
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -137,10 +139,17 @@ export default {
     }
   },
   watch: {
-    messages() {
-      this.$nextTick(() => {
-        this.scrollToBottom();
-      });
+    messages: {
+      handler(newMessages, oldMessages) {
+        // Only scroll if we have messages and they've changed
+        if (newMessages.length > 0) {
+          this.$nextTick(() => {
+            this.scrollToBottom();
+          });
+        }
+      },
+      deep: true,
+      immediate: true
     },
     loading(newVal, oldVal) {
       if (oldVal && !newVal) {
@@ -152,10 +161,13 @@ export default {
     }
   },
   mounted() {
-    this.scrollToBottom();
-    
     // Focus input on mount
     this.$refs.messageInput.focus();
+    
+    // Initial scroll to bottom
+    this.$nextTick(() => {
+      this.scrollToBottom();
+    });
   },
   methods: {
     sendMessage() {
@@ -185,7 +197,19 @@ export default {
     scrollToBottom() {
       const container = this.$refs.messagesContainer;
       if (container) {
-        container.scrollTop = container.scrollHeight;
+        // Multiple attempts to ensure scrolling works
+        const scrollToBottom = () => {
+          container.scrollTop = container.scrollHeight;
+        };
+        
+        // Immediate attempt
+        scrollToBottom();
+        
+        // Attempt after DOM update
+        requestAnimationFrame(scrollToBottom);
+        
+        // Final attempt after a short delay
+        setTimeout(scrollToBottom, 200);
       }
     },
     
@@ -232,7 +256,6 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: calc(100vh - 180px);
   background-color: var(--card-background);
 }
 
@@ -243,6 +266,7 @@ export default {
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
   background-color: rgba(76, 175, 80, 0.05);
+  flex-shrink: 0;
 }
 
 .chat-info {
@@ -523,11 +547,18 @@ export default {
   }
 }
 
+.chat-input-container {
+  flex-shrink: 0;
+  padding: var(--spacing-md);
+  background-color: var(--card-background);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
 .chat-input {
   display: flex;
-  padding: var(--spacing-md);
-  border-top: 1px solid var(--border-color);
-  background-color: var(--card-background);
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .message-textarea {
@@ -541,7 +572,6 @@ export default {
   max-height: 150px;
   font-family: var(--font-family);
   line-height: 1.5;
-  margin-right: var(--spacing-sm);
   background-color: var(--background-color);
   color: var(--text-color);
 }
