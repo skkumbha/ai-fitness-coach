@@ -143,9 +143,7 @@ export default {
       handler(newMessages, oldMessages) {
         // Only scroll if we have messages and they've changed
         if (newMessages.length > 0) {
-          this.$nextTick(() => {
-            this.scrollToBottom();
-          });
+          this.scheduleScroll();
         }
       },
       deep: true,
@@ -154,9 +152,7 @@ export default {
     loading(newVal, oldVal) {
       if (oldVal && !newVal) {
         // If loading just ended, scroll to bottom
-        this.$nextTick(() => {
-          this.scrollToBottom();
-        });
+        this.scheduleScroll();
       }
     }
   },
@@ -165,9 +161,7 @@ export default {
     this.$refs.messageInput.focus();
     
     // Initial scroll to bottom
-    this.$nextTick(() => {
-      this.scrollToBottom();
-    });
+    this.scheduleScroll();
   },
   methods: {
     sendMessage() {
@@ -197,20 +191,17 @@ export default {
     scrollToBottom() {
       const container = this.$refs.messagesContainer;
       if (container) {
-        // Multiple attempts to ensure scrolling works
-        const scrollToBottom = () => {
-          container.scrollTop = container.scrollHeight;
-        };
-        
-        // Immediate attempt
-        scrollToBottom();
-        
-        // Attempt after DOM update
-        requestAnimationFrame(scrollToBottom);
-        
-        // Final attempt after a short delay
-        setTimeout(scrollToBottom, 200);
+        container.scrollTop = container.scrollHeight;
       }
+    },
+    
+    scheduleScroll() {
+      // Use a single $nextTick with requestAnimationFrame for optimal timing
+      this.$nextTick(() => {
+        requestAnimationFrame(() => {
+          this.scrollToBottom();
+        });
+      });
     },
     
     formatTimestamp(timestamp) {

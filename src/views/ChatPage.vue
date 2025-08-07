@@ -144,10 +144,8 @@ export default {
       ];
     }
     
-    // Ensure scroll to latest message after everything is set up
-    this.$nextTick(() => {
-      this.scrollToLatestMessage();
-    });
+    // Schedule scroll to latest message after everything is set up
+    this.scrollToLatestMessage();
   },
   methods: {
     async fetchChatHistory() {
@@ -157,10 +155,8 @@ export default {
         await this.$store.dispatch('fetchChatHistory');
         this.messages = this.$store.getters.chatHistory;
         
-        // Ensure we scroll to the latest message after loading history
-        this.$nextTick(() => {
-          this.scrollToLatestMessage();
-        });
+        // Schedule scroll to latest message after loading history
+        this.scrollToLatestMessage();
       } catch (error) {
         console.error('Error fetching chat history:', error);
       } finally {
@@ -214,11 +210,11 @@ export default {
     },
     
     scrollToLatestMessage() {
-      // Trigger scroll to bottom in the ChatInterface component
+      // Use a single $nextTick for optimal timing
       this.$nextTick(() => {
         const chatInterface = this.$refs.chatInterface;
-        if (chatInterface && chatInterface.scrollToBottom) {
-          chatInterface.scrollToBottom();
+        if (chatInterface && chatInterface.scheduleScroll) {
+          chatInterface.scheduleScroll();
         }
       });
     }
