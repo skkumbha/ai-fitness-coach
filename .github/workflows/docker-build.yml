@@ -63,21 +63,21 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           release_name: Release ${{ steps.version.outputs.version }}
           body: |
-            ## 🚀 Fitness Coach Frontend v${{ steps.version.outputs.version }}
+            ## 🚀 Fitness Coach Frontend ${{ steps.version.outputs.version }}
             
             ### Docker Image
-            - **Image**: `${{ env.DOCKER_IMAGE }}:v${{ steps.version.outputs.version }}`
+            - **Image**: `${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}`
             - **Platform**: ${{ env.DOCKER_PLATFORM }}
             
             ### Deployment
             ```bash
             # Pull the new image
-            docker pull ${{ env.DOCKER_IMAGE }}:v${{ steps.version.outputs.version }}
+            docker pull ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
             
             # Update your container
             docker stop fa-f
             docker rm fa-f
-            docker run -d -p 8080:80 --name fa-f ${{ env.DOCKER_IMAGE }}:v${{ steps.version.outputs.version }}
+            docker run -d -p 8080:80 --name fa-f ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
             sudo systemctl reload nginx
             ```
           draft: false
