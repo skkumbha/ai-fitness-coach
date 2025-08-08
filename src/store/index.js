@@ -94,6 +94,12 @@ export default createStore({
     addChatMessage(state, message) {
       state.chatHistory.push(message);
     },
+    updateMessageStatus(state, { messageId, status }) {
+      const message = state.chatHistory.find(m => m.id === messageId);
+      if (message) {
+        message.status = status;
+      }
+    },
     
     // UI mutations
     setLoading(state, isLoading) {
@@ -294,12 +300,16 @@ export default createStore({
           id: Date.now().toString(),
           sender: 'user',
           text: messageText,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          status: 'sent' // Initial status
         };
         commit('addChatMessage', userMessage);
         
         // Send message to API and get AI response
         const response = await sendChatMessage(messageText);
+        
+        // Update status to acknowledged after successful backend response
+        commit('updateMessageStatus', { messageId: userMessage.id, status: 'acknowledged' });
         
         commit('addChatMessage', {
           id: response.id,
