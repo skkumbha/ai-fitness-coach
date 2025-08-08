@@ -53,7 +53,9 @@
           :class="{ 
             'user-message': message.sender === 'user',
             'assistant-message': message.sender === 'assistant',
-            'error-message': message.isError
+            'error-message': message.isError,
+            'message-sent': message.sender === 'user' && message.status === 'sent',
+            'message-acknowledged': message.sender === 'user' && message.status === 'acknowledged'
           }"
         >
           <div class="message-avatar" v-if="message.sender === 'assistant'">
@@ -65,7 +67,9 @@
                 <i class="fas fa-exclamation-circle"></i> {{ message.text }}
               </p>
               <div v-else class="message-text" v-html="formatMessage(message.text)"></div>
-              <div class="message-time">{{ formatTimestamp(message.timestamp) }}</div>
+              <div class="message-footer">
+                <div class="message-time">{{ formatTimestamp(message.timestamp) }}</div>
+              </div>
             </div>
           </div>
           <div class="message-avatar user-avatar" v-if="message.sender === 'user'">
@@ -444,6 +448,17 @@ export default {
   border-radius: var(--border-radius-md) var(--border-radius-md) 0 var(--border-radius-md);
 }
 
+/* Message delivery states - using only colors */
+.message-sent .message-bubble {
+  background-color: #c3e0c3; /* Pale green for sent messages */
+  color: #2c3e50;
+}
+
+.message-acknowledged .message-bubble {
+  background-color: #32CD32; /* Bright green for acknowledged messages */
+  color: #2c3e50;
+}
+
 .assistant-message .message-bubble {
   background-color: rgba(76, 175, 80, 0.1);
   color: var(--text-color);
@@ -470,14 +485,16 @@ export default {
   margin-right: var(--spacing-xs);
 }
 
-.message-time {
+.message-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--spacing-xs);
   font-size: var(--font-size-xs);
   color: rgba(0, 0, 0, 0.4);
-  margin-top: var(--spacing-xs);
-  text-align: right;
 }
 
-.user-message .message-time {
+.user-message .message-footer {
   color: rgba(255, 255, 255, 0.8);
 }
 
