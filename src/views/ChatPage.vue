@@ -176,9 +176,10 @@ export default {
       try {
         await this.$store.dispatch('sendMessage', messageText);
       } catch (error) {
+        console.error('Error sending message:', error);
         // Add error message to chat
         this.messages.push({
-          id: Date.now().toString(),
+          id: (Date.now() + 1).toString(),
           sender: 'assistant',
           text: 'Sorry, I encountered an error processing your request. Please try again.',
           timestamp: new Date().toISOString(),
