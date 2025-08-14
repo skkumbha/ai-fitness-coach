@@ -30,12 +30,20 @@ export default {
     const token = localStorage.getItem('token');
     if (token) {
       this.$store.commit('setToken', token);
-      this.$store.dispatch('fetchUserProfile').catch(error => {
+      this.$store.dispatch('fetchUserProfile').then(() => {
+        // Initialize WebSocket after successful profile fetch
+        this.$store.dispatch('initializeWebSocket');
+      }).catch(error => {
         console.error('Failed to fetch user profile:', error);
         // If profile fetch fails, clear the token
         this.$store.commit('setToken', null);
       });
     }
+  },
+  
+  beforeUnmount() {
+    // Clean up WebSocket connection when app is unmounted
+    this.$store.dispatch('disconnectWebSocket');
   }
 };
 </script>

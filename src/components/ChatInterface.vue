@@ -23,69 +23,35 @@
       </div>
     </div>
     
-    <div class="chat-messages" ref="messagesContainer">
-      <div v-if="messages.length === 0" class="empty-chat">
-        <div class="welcome-message">
-          <div class="welcome-icon">
-            <i class="fas fa-robot"></i>
-          </div>
-          <h3>Hi, I'm your FitCoach AI</h3>
-          <p>How can I help with your fitness goals today?</p>
-        </div>
-        
-        <div class="suggestion-chips">
-          <button 
-            v-for="(suggestion, index) in suggestionChips"
-            :key="index"
-            class="suggestion-chip"
-            @click="sendSuggestion(suggestion)"
-          >
-            {{ suggestion }}
-          </button>
-        </div>
-      </div>
-      
-      <div v-else class="messages-list">
-        <div 
-          v-for="(message, index) in messages" 
-          :key="message.id"
-          class="message-item"
-          :class="{ 
-            'user-message': message.sender === 'user',
-            'assistant-message': message.sender === 'assistant',
-            'error-message': message.isError,
-            'message-sent': message.sender === 'user' && message.status === 'sent',
-            'message-acknowledged': message.sender === 'user' && message.status === 'acknowledged'
-          }"
-        >
-          <div class="message-avatar" v-if="message.sender === 'assistant'">
-            <i class="fas fa-robot"></i>
-          </div>
-          <div class="message-content">
-            <div class="message-bubble" ref="messageBubbles">
-              <p v-if="message.isError" class="error-text">
-                <i class="fas fa-exclamation-circle"></i> {{ message.text }}
-              </p>
-              <div v-else class="message-text" v-html="formatMessage(message.text)"></div>
-              <div class="message-footer">
-                <div class="message-time">{{ formatTimestamp(message.timestamp) }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="message-avatar user-avatar" v-if="message.sender === 'user'">
-            <i class="fas fa-user"></i>
+    <div class="chat-messages" ref="chatMessages" @scroll="$emit('scroll', $event)">
+      <div 
+        v-for="message in messages" 
+        :key="message.id" 
+        class="message"
+        :class="[
+          message.sender === 'user' ? 'user-message' : 'assistant-message',
+          message.status ? `message-${message.status}` : ''
+        ]"
+
+
+      >
+        <div class="message-bubble">
+          <div class="message-text">{{ message.text }}</div>
+          <div class="message-timestamp">
+            {{ formatTimestamp(message.timestamp) }}
           </div>
         </div>
       </div>
       
-      <div v-if="loading" class="assistant-typing">
-        <div class="typing-avatar">
-          <i class="fas fa-robot"></i>
-        </div>
-        <div class="typing-indicator">
-          <span></span>
-          <span></span>
-          <span></span>
+      <!-- Typing indicator -->
+      <div v-if="isTyping" class="message message-assistant">
+        <div class="message-bubble typing-indicator">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="typing-text">{{ typingIndicatorText }}</div>
         </div>
       </div>
     </div>
@@ -140,24 +106,23 @@ export default {
   computed: {
     canSendMessage() {
       return this.newMessage.trim().length > 0;
+    },
+    // Check if AI is typing based on WebSocket typing indicators
+    isTyping() {
+      return this.$store.getters.typingIndicators.assistant || false;
+    },
+    
+    // Dynamic typing indicator text
+    typingIndicatorText() {
+      return 'FitCoach AI is thinking...';
     }
   },
   watch: {
     messages: {
-      handler(newMessages, oldMessages) {
-        // Only scroll if we have messages and they've changed
-        if (newMessages.length > 0) {
-          this.scheduleScroll();
-        }
-      },
-      deep: true,
-      immediate: true
-    },
-    loading(newVal, oldVal) {
-      if (oldVal && !newVal) {
-        // If loading just ended, scroll to bottom
+      handler() {
         this.scheduleScroll();
-      }
+      },
+      deep: true
     }
   },
   mounted() {
@@ -193,16 +158,23 @@ export default {
     },
     
     scrollToBottom() {
-      const container = this.$refs.messagesContainer;
+      const container = this.$refs.chatMessages;
+      console.log('🔍 [ChatInterface] scrollToBottom called, container:', container);
+      
       if (container) {
+        console.log('🔍 [ChatInterface] Scrolling to bottom, scrollHeight:', container.scrollHeight);
         container.scrollTop = container.scrollHeight;
+      } else {
+        console.warn('⚠️ [ChatInterface] No chatMessages container found');
       }
     },
     
     scheduleScroll() {
+      console.log('🔍 [ChatInterface] scheduleScroll called');
       // Use a single $nextTick with requestAnimationFrame for optimal timing
       this.$nextTick(() => {
         requestAnimationFrame(() => {
+          console.log('🔍 [ChatInterface] Executing scrollToBottom');
           this.scrollToBottom();
         });
       });
@@ -211,8 +183,16 @@ export default {
     formatTimestamp(timestamp) {
       if (!timestamp) return '';
       
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      try {
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+          return ''; // Return empty string for invalid dates
+        }
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (error) {
+        console.warn('Invalid timestamp:', timestamp);
+        return '';
+      }
     },
     
     formatMessage(text) {
@@ -334,6 +314,10 @@ export default {
   background-color: rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
+  /* Ensure proper flexbox behavior for messages */
+  align-items: stretch;
+  /* Force proper message alignment */
+  justify-content: flex-start;
 }
 
 .empty-chat {
@@ -396,55 +380,70 @@ export default {
   background-color: rgba(76, 175, 80, 0.2);
 }
 
-.messages-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
+/* Message layout and styling */
+.chat-interface .chat-messages .message {
+  display: flex !important;
+  align-items: flex-start !important;
+  margin-bottom: var(--spacing-md) !important;
+  gap: var(--spacing-sm) !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  /* Ensure flexbox behavior */
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
 }
 
-.message-item {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: var(--spacing-md);
+/* User message - right side */
+.chat-interface .chat-messages .message.user-message {
+  justify-content: flex-end !important;
+  flex-direction: row-reverse !important;
+  /* Force right alignment */
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  /* Ensure proper avatar positioning */
+  align-items: flex-end !important;
 }
 
-.user-message {
-  justify-content: flex-end;
+/* Assistant message - left side */
+.chat-interface .chat-messages .message.assistant-message {
+  justify-content: flex-start !important;
+  /* Force left alignment */
+  margin-left: 0 !important;
+  margin-right: auto !important;
 }
 
-.message-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-md);
-  margin-right: var(--spacing-sm);
+
+
+
+
+
+
+.chat-interface .chat-messages .message-bubble {
+  max-width: 70% !important;
+  padding: var(--spacing-sm) var(--spacing-md) !important;
+  border-radius: var(--border-radius-md) !important;
+  position: relative !important;
+  word-wrap: break-word !important;
+  box-sizing: border-box !important;
+  /* Ensure proper text alignment */
+  text-align: left !important;
+  /* Ensure proper flexbox behavior */
+  flex-shrink: 1 !important;
+  flex-grow: 0 !important;
 }
 
-.user-avatar {
-  margin-right: 0;
-  margin-left: var(--spacing-sm);
-  background-color: var(--secondary-color);
+.chat-interface .chat-messages .message.user-message .message-bubble {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  border-radius: var(--border-radius-md) var(--border-radius-md) var(--border-radius-md) 0;
+  /* Force right alignment for user messages */
+  margin-left: auto !important;
+  margin-right: 0 !important;
 }
 
-.message-content {
-  max-width: 80%;
-}
-
-.message-bubble {
-  background-color: rgba(76, 175, 80, 0.1);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  position: relative;
-}
-
-.user-message .message-bubble {
-  background-color: var(--primary-color);
-  color: white;
+.chat-interface .chat-messages .message.assistant-message .message-bubble {
+  background-color: rgba(76, 175, 80, 0.1) !important;
+  color: var(--text-color) !important;
   border-radius: var(--border-radius-md) var(--border-radius-md) 0 var(--border-radius-md);
 }
 
@@ -455,14 +454,8 @@ export default {
 }
 
 .message-acknowledged .message-bubble {
-  background-color: #32CD32; /* Bright green for acknowledged messages */
-  color: #2c3e50;
-}
-
-.assistant-message .message-bubble {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: var(--text-color);
-  border-radius: 0 var(--border-radius-md) var(--border-radius-md) var(--border-radius-md);
+  background-color: #268705;
+  color: white;
 }
 
 .error-message .message-bubble {
@@ -473,6 +466,13 @@ export default {
 .message-text {
   white-space: pre-wrap;
   line-height: 1.5;
+}
+
+.message-timestamp {
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+  text-align: right;
+  margin-top: var(--spacing-xs);
 }
 
 .error-text {
@@ -518,41 +518,47 @@ export default {
 }
 
 .typing-indicator {
-  background-color: rgba(76, 175, 80, 0.1);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-xs) var(--spacing-md);
-  display: flex;
-  align-items: center;
+  background-color: var(--card-background, #f8f9fa) !important;
+  border: 1px solid var(--border-color, #dee2e6);
 }
 
-.typing-indicator span {
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.typing-dots span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--primary-color);
-  margin: 0 2px;
-  animation: typing 1.4s infinite both;
-  opacity: 0.6;
+  background-color: var(--text-secondary, #6c757d);
+  animation: typing-bounce 1.4s infinite ease-in-out;
 }
 
-.typing-indicator span:nth-child(2) {
-  animation-delay: 0.2s;
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
 }
 
-.typing-indicator span:nth-child(3) {
-  animation-delay: 0.4s;
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
 }
 
-@keyframes typing {
-  0% {
-    transform: translateY(0);
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
   }
-  50% {
-    transform: translateY(-5px);
+  40% {
+    transform: scale(1);
+    opacity: 1;
   }
-  100% {
-    transform: translateY(0);
-  }
+}
+
+.typing-text {
+  font-size: 0.875em;
+  color: var(--text-secondary, #6c757d);
+  font-style: italic;
 }
 
 .chat-input-container {
@@ -658,5 +664,65 @@ export default {
   margin-left: 1.5em;
   margin-bottom: 0.5em;
   list-style-type: disc;
+}
+
+/* System message styling */
+.message.message-system .message-bubble {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #1e40af;
+}
+
+.message.message-system .message-text {
+  font-style: italic;
+}
+
+/* Error message styling */
+.message.message-error .message-bubble {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+
+.message.message-error .message-text {
+  font-weight: 500;
+}
+
+/* Typing indicator styling */
+.typing-indicator {
+  background-color: rgba(156, 163, 175, 0.1);
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #9ca3af;
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+.typing-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
 }
 </style>

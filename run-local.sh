@@ -1,11 +1,11 @@
 
 #!/bin/bash
 
-echo "🚀 Building and running Fitness Coach Frontend locally..."
+echo "🚀 Building and running Fitness Coach Frontend locally (Development Mode)..."
 
 # Configuration
-IMAGE_NAME="fitness-coach-frontend-local"
-CONTAINER_NAME="fa-f"
+IMAGE_NAME="fitness-coach-frontend-dev"
+CONTAINER_NAME="fa-f-dev"
 LOCAL_PORT="3000"
 
 # Colors for output
@@ -41,20 +41,23 @@ docker rm "$CONTAINER_NAME" 2>/dev/null || true
 print_status "🗑️  Removing existing local image..."
 docker rmi "$IMAGE_NAME" 2>/dev/null || true
 
-# Step 3: Build Docker image locally
-print_status "📦 Building Docker image locally..."
-docker build --build-arg VITE_API_URL=http://localhost:8080/api -t "$IMAGE_NAME" .
+# Step 3: Build Docker image locally using development Dockerfile
+print_status "📦 Building development Docker image locally..."
+docker build --build-arg VITE_API_URL=http://localhost:8080/api -f Dockerfile.dev -t "$IMAGE_NAME" .
 
 if [ $? -ne 0 ]; then
     print_error "❌ Docker build failed"
     exit 1
 fi
 
-print_success "✅ Docker image built successfully!"
+print_success "✅ Development Docker image built successfully!"
 
 # Step 4: Run the container
-print_status "🐳 Starting container..."
-docker run -d -p $LOCAL_PORT:80 --name $CONTAINER_NAME $IMAGE_NAME
+print_status "🐳 Starting development container..."
+docker run -d -p $LOCAL_PORT:3000 \
+  -e VITE_WS_HOST=localhost:8080 \
+  -e VITE_WS_PATH=/ws \
+  --name $CONTAINER_NAME $IMAGE_NAME
 
 if [ $? -ne 0 ]; then
     print_error "❌ Failed to start container"
@@ -64,7 +67,7 @@ fi
 # Step 5: Check container status
 print_status "📊 Checking container status..."
 if docker ps | grep -q "$CONTAINER_NAME"; then
-    print_success "✅ Container is running!"
+    print_success "✅ Development container is running!"
 else
     print_error "❌ Container failed to start"
     exit 1
@@ -90,4 +93,5 @@ echo ""
 print_warning "💡 Note: This is using localhost:8080/api for backend calls"
 print_warning "   Make sure your backend is running on port 8080"
 echo ""
-print_success "🚀 Happy coding!" 
+print_success "🚀 Happy coding!"
+print_success "   Hot reloading is enabled - changes will update automatically!" 

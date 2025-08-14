@@ -2,12 +2,26 @@
   <div class="chat-page">
     <div class="container">
       <div class="chat-container">
-        <div class="chat-sidebar">
+                <div class="chat-sidebar">
           <div class="sidebar-header">
             <h2 class="sidebar-title">Coach Chat</h2>
-            <button class="btn btn-icon" @click="refreshChat">
-              <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
-            </button>
+            <div class="header-actions">
+              <div class="connection-status" :class="connectionStatusClass">
+                <i :class="connectionStatusIcon"></i>
+                {{ connectionStatusText }}
+              </div>
+              <button class="btn btn-icon" @click="refreshChat">
+                <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
+              </button>
+              <button 
+                v-if="userHasScrolledUp" 
+                class="btn btn-icon" 
+                @click="scrollToLatestMessage"
+                title="Scroll to latest message"
+              >
+                <i class="fas fa-arrow-down"></i>
+              </button>
+            </div>
           </div>
           
           <div class="assistant-info">
@@ -41,6 +55,9 @@
             <button class="btn btn-outline btn-block" @click="clearChat">
               <i class="fas fa-trash-alt"></i> Clear Chat
             </button>
+            <button class="btn btn-outline btn-block" @click="testWebSocket" style="margin-top: 10px;">
+              <i class="fas fa-bug"></i> Test WebSocket
+            </button>
           </div>
         </div>
         
@@ -50,6 +67,7 @@
             :messages="messages" 
             :loading="loading"
             @send-message="sendMessage"
+            @scroll="handleUserScroll"
           />
         </div>
       </div>
@@ -59,6 +77,7 @@
 
 <script>
 import ChatInterface from '@/components/ChatInterface.vue';
+import { generateMessageId } from '@/utils/messageUtils';
 
 export default {
   name: 'ChatPage',
@@ -70,6 +89,7 @@ export default {
       loading: false,
       refreshing: false,
       messages: [],
+      userHasScrolledUp: false, // Track if user has manually scrolled up
       suggestedTopics: [
         { 
           id: 'workout-plan', 
@@ -119,7 +139,21 @@ export default {
         });
       },
       deep: true
-    }
+    },
+    // Watch store's chatHistory for real-time WebSocket updates
+            '$store.getters.chatHistory': {
+          handler(newChatHistory) {
+            console.log('🔄 [ChatPage] Store chatHistory updated:', newChatHistory);
+            this.messages = [...newChatHistory];
+            
+            // Always scroll to latest message when store updates
+            this.$nextTick(() => {
+              this.scrollToLatestMessage();
+            });
+          },
+          deep: true,
+          immediate: true
+        }
   },
   async mounted() {
     await this.fetchChatHistory();
@@ -136,7 +170,7 @@ export default {
     if (this.messages.length === 0) {
       this.messages = [
         {
-          id: 'welcome',
+          id: generateMessageId('welcome'),
           sender: 'assistant',
           text: 'Hello! I\'m your FitCoach AI assistant. How can I help you with your fitness journey today?',
           timestamp: new Date().toISOString()
@@ -145,7 +179,11 @@ export default {
     }
     
     // Schedule scroll to latest message after everything is set up
-    this.scrollToLatestMessage();
+    this.$nextTick(() => {
+      this.scrollToLatestMessage();
+    });
+    
+
   },
   methods: {
     async fetchChatHistory() {
@@ -155,8 +193,10 @@ export default {
         await this.$store.dispatch('fetchChatHistory');
         this.messages = this.$store.getters.chatHistory;
         
-        // Schedule scroll to latest message after loading history
-        this.scrollToLatestMessage();
+        // Ensure we scroll to latest message after loading history
+        this.$nextTick(() => {
+          this.scrollToLatestMessage();
+        });
       } catch (error) {
         console.error('Error fetching chat history:', error);
       } finally {
@@ -179,7 +219,7 @@ export default {
         console.error('Error sending message:', error);
         // Add error message to chat
         this.messages.push({
-          id: (Date.now() + 1).toString(),
+          id: generateMessageId('error'),
           sender: 'assistant',
           text: 'Sorry, I encountered an error processing your request. Please try again.',
           timestamp: new Date().toISOString(),
@@ -200,7 +240,7 @@ export default {
       
       this.messages = [
         {
-          id: 'welcome',
+          id: generateMessageId('welcome'),
           sender: 'assistant',
           text: 'Chat cleared. How can I help you with your fitness journey today?',
           timestamp: new Date().toISOString()
@@ -211,13 +251,109 @@ export default {
     },
     
     scrollToLatestMessage() {
+      console.log('🔍 [ChatPage] scrollToLatestMessage called');
       // Use a single $nextTick for optimal timing
       this.$nextTick(() => {
         const chatInterface = this.$refs.chatInterface;
+        console.log('🔍 [ChatPage] chatInterface ref:', chatInterface);
         if (chatInterface && chatInterface.scheduleScroll) {
+          console.log('🔍 [ChatPage] Calling scheduleScroll');
           chatInterface.scheduleScroll();
+        } else {
+          console.warn('⚠️ [ChatPage] chatInterface or scheduleScroll not available');
+          // Fallback: try to scroll directly
+          this.fallbackScrollToBottom();
         }
       });
+    },
+    
+    // Fallback scroll method
+    fallbackScrollToBottom() {
+      console.log('🔍 [ChatPage] Using fallback scroll method');
+      const chatContainer = document.querySelector('.chat-messages');
+      if (chatContainer) {
+        console.log('🔍 [ChatPage] Found chat container, scrolling to bottom');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      } else {
+        console.warn('⚠️ [ChatPage] No chat container found for fallback scroll');
+      }
+    },
+    
+    // Handle user scroll events to detect manual scrolling
+    handleUserScroll(event) {
+      const container = event.target;
+      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100; // 100px threshold
+      
+      if (isAtBottom) {
+        this.userHasScrolledUp = false;
+      } else {
+        this.userHasScrolledUp = true;
+      }
+    },
+    
+    // Reset scroll flag when user manually scrolls to bottom
+    resetScrollFlag() {
+      this.userHasScrolledUp = false;
+    },
+    
+    testWebSocket() {
+      console.log('🧪 [ChatPage] Testing WebSocket functionality...');
+      
+      // Test 1: Check store state
+      console.log('🔍 [ChatPage] Store state:', {
+        isConnected: this.$store.getters.isWebSocketConnected,
+        hasWebSocket: !!this.$store.getters.websocket,
+        chatHistoryLength: this.$store.getters.chatHistory.length
+      });
+      
+      // Test 2: Add a test message to store
+      const testMessage = {
+        id: generateMessageId('test'),
+        sender: 'assistant',
+        text: 'This is a test message from the WebSocket test button!',
+        timestamp: new Date().toISOString(),
+        status: 'received'
+      };
+      
+      console.log('🧪 [ChatPage] Adding test message to store:', testMessage);
+      this.$store.commit('addChatMessage', testMessage);
+      
+      // Test 3: Check if local messages array was updated
+      console.log('🔍 [ChatPage] After adding test message:', {
+        storeLength: this.$store.getters.chatHistory.length,
+        localLength: this.messages.length
+      });
+    }
+  },
+  computed: {
+    showNavigation() {
+      // Hide navigation on login, signup, and onboarding pages
+      const hiddenRoutes = ['login', 'signup', 'onboarding'];
+      return !hiddenRoutes.includes(this.$route.name);
+    },
+    
+    // WebSocket connection status
+    isWebSocketConnected() {
+      return this.$store.getters.isWebSocketConnected;
+    },
+    
+    connectionStatusClass() {
+      return {
+        'status-connected': this.isWebSocketConnected,
+        'status-disconnected': !this.isWebSocketConnected
+      };
+    },
+    
+    connectionStatusIcon() {
+      return this.isWebSocketConnected 
+        ? 'fas fa-wifi' 
+        : 'fas fa-wifi-slash';
+    },
+    
+    connectionStatusText() {
+      return this.isWebSocketConnected 
+        ? 'Connected' 
+        : 'Disconnected';
     }
   }
 };
@@ -265,6 +401,36 @@ export default {
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.connection-status.status-connected {
+  color: var(--success-color, #28a745);
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.connection-status.status-disconnected {
+  color: var(--danger-color, #dc3545);
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.connection-status i {
+  font-size: 0.875em;
 }
 
 .sidebar-title {

@@ -16,11 +16,15 @@ export const getChatHistory = async () => {
 /**
  * Send a message to the AI assistant
  * @param {string} message - Message text to send
+ * @param {string} idempotencyKey - Unique key for idempotency (client-generated)
  * @returns {Promise} - Promise with AI response message
  */
-export const sendChatMessage = async (message) => {
+export const sendChatMessage = async (message, idempotencyKey) => {
   try {
-    const response = await API.post('/chat/message', { message });
+    const response = await API.post('/chat/message', { 
+      message,
+      idempotencyKey 
+    });
     return response.data;
   } catch (error) {
     throw new Error(error.message || 'Failed to send message to assistant.');
