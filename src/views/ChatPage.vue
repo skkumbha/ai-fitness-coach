@@ -55,9 +55,6 @@
             <button class="btn btn-outline btn-block" @click="clearChat">
               <i class="fas fa-trash-alt"></i> Clear Chat
             </button>
-            <button class="btn btn-outline btn-block" @click="testWebSocket" style="margin-top: 10px;">
-              <i class="fas fa-bug"></i> Test WebSocket
-            </button>
           </div>
         </div>
         
@@ -67,7 +64,7 @@
             :messages="messages" 
             :loading="loading"
             @send-message="sendMessage"
-            @scroll="handleUserScroll"
+
           />
         </div>
       </div>
@@ -89,7 +86,7 @@ export default {
       loading: false,
       refreshing: false,
       messages: [],
-      userHasScrolledUp: false, // Track if user has manually scrolled up
+
       suggestedTopics: [
         { 
           id: 'workout-plan', 
@@ -143,7 +140,6 @@ export default {
     // Watch store's chatHistory for real-time WebSocket updates
             '$store.getters.chatHistory': {
           handler(newChatHistory) {
-            console.log('🔄 [ChatPage] Store chatHistory updated:', newChatHistory);
             this.messages = [...newChatHistory];
             
             // Always scroll to latest message when store updates
@@ -251,16 +247,12 @@ export default {
     },
     
     scrollToLatestMessage() {
-      console.log('🔍 [ChatPage] scrollToLatestMessage called');
       // Use a single $nextTick for optimal timing
       this.$nextTick(() => {
         const chatInterface = this.$refs.chatInterface;
-        console.log('🔍 [ChatPage] chatInterface ref:', chatInterface);
         if (chatInterface && chatInterface.scheduleScroll) {
-          console.log('🔍 [ChatPage] Calling scheduleScroll');
           chatInterface.scheduleScroll();
         } else {
-          console.warn('⚠️ [ChatPage] chatInterface or scheduleScroll not available');
           // Fallback: try to scroll directly
           this.fallbackScrollToBottom();
         }
@@ -269,61 +261,15 @@ export default {
     
     // Fallback scroll method
     fallbackScrollToBottom() {
-      console.log('🔍 [ChatPage] Using fallback scroll method');
       const chatContainer = document.querySelector('.chat-messages');
       if (chatContainer) {
-        console.log('🔍 [ChatPage] Found chat container, scrolling to bottom');
         chatContainer.scrollTop = chatContainer.scrollHeight;
-      } else {
-        console.warn('⚠️ [ChatPage] No chat container found for fallback scroll');
       }
     },
     
-    // Handle user scroll events to detect manual scrolling
-    handleUserScroll(event) {
-      const container = event.target;
-      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100; // 100px threshold
-      
-      if (isAtBottom) {
-        this.userHasScrolledUp = false;
-      } else {
-        this.userHasScrolledUp = true;
-      }
-    },
+
     
-    // Reset scroll flag when user manually scrolls to bottom
-    resetScrollFlag() {
-      this.userHasScrolledUp = false;
-    },
-    
-    testWebSocket() {
-      console.log('🧪 [ChatPage] Testing WebSocket functionality...');
-      
-      // Test 1: Check store state
-      console.log('🔍 [ChatPage] Store state:', {
-        isConnected: this.$store.getters.isWebSocketConnected,
-        hasWebSocket: !!this.$store.getters.websocket,
-        chatHistoryLength: this.$store.getters.chatHistory.length
-      });
-      
-      // Test 2: Add a test message to store
-      const testMessage = {
-        id: generateMessageId('test'),
-        sender: 'assistant',
-        text: 'This is a test message from the WebSocket test button!',
-        timestamp: new Date().toISOString(),
-        status: 'received'
-      };
-      
-      console.log('🧪 [ChatPage] Adding test message to store:', testMessage);
-      this.$store.commit('addChatMessage', testMessage);
-      
-      // Test 3: Check if local messages array was updated
-      console.log('🔍 [ChatPage] After adding test message:', {
-        storeLength: this.$store.getters.chatHistory.length,
-        localLength: this.messages.length
-      });
-    }
+
   },
   computed: {
     showNavigation() {

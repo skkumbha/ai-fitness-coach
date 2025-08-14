@@ -23,7 +23,7 @@
       </div>
     </div>
     
-    <div class="chat-messages" ref="chatMessages" @scroll="$emit('scroll', $event)">
+            <div class="chat-messages" ref="chatMessages">
       <div 
         v-for="message in messages" 
         :key="message.id" 
@@ -159,22 +159,16 @@ export default {
     
     scrollToBottom() {
       const container = this.$refs.chatMessages;
-      console.log('🔍 [ChatInterface] scrollToBottom called, container:', container);
       
       if (container) {
-        console.log('🔍 [ChatInterface] Scrolling to bottom, scrollHeight:', container.scrollHeight);
         container.scrollTop = container.scrollHeight;
-      } else {
-        console.warn('⚠️ [ChatInterface] No chatMessages container found');
       }
     },
     
     scheduleScroll() {
-      console.log('🔍 [ChatInterface] scheduleScroll called');
       // Use a single $nextTick with requestAnimationFrame for optimal timing
       this.$nextTick(() => {
         requestAnimationFrame(() => {
-          console.log('🔍 [ChatInterface] Executing scrollToBottom');
           this.scrollToBottom();
         });
       });

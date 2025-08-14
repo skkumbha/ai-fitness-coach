@@ -69,17 +69,13 @@ export default createStore({
   mutations: {
     // Auth mutations
     setToken(state, token) {
-      console.log('🔵 [Store] Setting token in store and localStorage');
       state.token = token;
       state.isAuthenticated = !!token;
       if (token) {
         localStorage.setItem('token', token);
-        console.log('✅ [Store] Token stored in localStorage');
       } else {
         localStorage.removeItem('token');
-        console.log('✅ [Store] Token removed from localStorage');
       }
-      console.log('✅ [Store] Authentication state:', state.isAuthenticated);
     },
     
     // User mutations
@@ -106,12 +102,8 @@ export default createStore({
       state.chatHistory = messages;
     },
     addChatMessage(state, message) {
-      console.log('📝 [Store] Adding chat message:', message);
-      console.log('📝 [Store] Current chatHistory length before:', state.chatHistory.length);
-      
       // Validate message structure
       if (!message || typeof message !== 'object') {
-        console.error('❌ [Store] Invalid message format:', message);
         return;
       }
       
@@ -125,8 +117,6 @@ export default createStore({
         ...message // Keep any additional fields
       };
       
-      console.log('📝 [Store] Validated message:', validatedMessage);
-      
       // Check if message with this ID or idempotency key already exists (idempotency)
       const existingMessage = state.chatHistory.find(m => 
         m.id === validatedMessage.id || 
@@ -135,15 +125,11 @@ export default createStore({
       
       if (!existingMessage) {
         state.chatHistory.push(validatedMessage);
-        console.log('✅ [Store] Message added successfully, new length:', state.chatHistory.length);
         
         // Stop typing indicator when a message is received from the same sender
         if (validatedMessage.sender === 'assistant' && state.typingIndicators.assistant) {
-          console.log('⌨️ [Store] Stopping typing indicator for assistant after message received');
           delete state.typingIndicators.assistant;
         }
-      } else {
-        console.log('🔄 [Store] Duplicate message detected, skipping:', validatedMessage.id || validatedMessage.idempotencyKey);
       }
     },
     updateMessageStatus(state, { messageId, status }) {
@@ -167,13 +153,11 @@ export default createStore({
       state.isWebSocketConnected = isConnected;
     },
     setTypingIndicator(state, { userId, isTyping }) {
-      console.log('⌨️ [Store] Setting typing indicator:', { userId, isTyping });
       if (isTyping) {
         state.typingIndicators[userId] = isTyping;
       } else {
         delete state.typingIndicators[userId];
       }
-      console.log('⌨️ [Store] Current typing indicators:', state.typingIndicators);
     },
     
     // UI mutations
@@ -217,24 +201,15 @@ export default createStore({
       commit('clearError');
       
       try {
-        console.log('🔵 [Store] Starting signup process...');
         const response = await signup(userData);
-        console.log('✅ [Store] Signup successful, response:', response);
-        
-        console.log('🔵 [Store] Setting token...');
         commit('setToken', response.token);
-        console.log('✅ [Store] Token set in store and localStorage');
-        
-        console.log('🔵 [Store] Starting profile fetch...');
         await dispatch('fetchUserProfile');
-        console.log('✅ [Store] Profile fetch completed');
         
         // Initialize WebSocket after successful signup
         await dispatch('initializeWebSocket');
         
         return response;
       } catch (error) {
-        console.error('❌ [Store] Signup error:', error);
         commit('setError', error.message || 'Failed to sign up');
         throw error;
       } finally {
@@ -267,15 +242,9 @@ export default createStore({
       commit('setLoading', true);
       
       try {
-        console.log('🔵 [Store] Fetching user profile...');
-        console.log('🔵 [Store] Current token:', state.token);
         const user = await getProfile();
-        console.log('✅ [Store] Profile data received:', user);
-        
         commit('setUser', user);
-        console.log('✅ [Store] User data set in store');
       } catch (error) {
-        console.error('❌ [Store] Profile fetch error:', error);
         commit('setError', error.message || 'Failed to fetch user profile');
         throw error;
       } finally {
@@ -384,15 +353,7 @@ export default createStore({
         };
         commit('addChatMessage', userMessage);
         
-        // Debug WebSocket state
-        console.log('🔍 [Store] WebSocket state check:', {
-          hasWebSocket: !!state.websocket,
-          isConnected: state.isWebSocketConnected,
-          websocketState: state.websocket ? state.websocket.getConnectionStatus() : 'NO_WEBSOCKET'
-        });
-        
         if (state.websocket && state.isWebSocketConnected) {
-          console.log('🌐 [Store] Sending message via WebSocket');
           const success = state.websocket.send({ 
             type: 'CHAT_MESSAGE', 
             message: messageText, 
@@ -402,13 +363,10 @@ export default createStore({
           if (success) {
             commit('updateMessageStatus', { messageId: userMessage.id, status: 'sent' });
             return { success: true, message: 'Message sent via WebSocket' };
-          } else {
-            console.warn('⚠️ [Store] WebSocket send failed, falling back to REST API');
           }
         }
         
         // Fallback to REST API
-        console.log('🌐 [Store] Using REST API fallback');
         const response = await sendChatMessage(messageText, idempotencyKey);
         commit('updateMessageStatus', { messageId: userMessage.id, status: 'acknowledged' });
         commit('updateMessageId', { oldId: userMessage.id, newId: response.id });
@@ -433,7 +391,6 @@ export default createStore({
       );
       
       if (existingMessage && existingMessage.status === 'acknowledged') {
-        console.log('🔄 [Store] Message already processed successfully, skipping retry:', idempotencyKey);
         return existingMessage;
       }
       
@@ -449,30 +406,22 @@ export default createStore({
     // WebSocket actions
     initializeWebSocket({ commit, state }) {
       if (!state.token) {
-        console.warn('⚠️ [Store] Cannot initialize WebSocket: no token available');
         return;
       }
       
       try {
-        console.log('🔌 [Store] Initializing WebSocket connection');
-        console.log('🔍 [Store] Current token:', state.token ? 'Present' : 'Missing');
-        
         const websocket = new ChatWebSocket(state.token);
         commit('setWebSocket', websocket);
         
         // Connect to WebSocket
         websocket.connect();
-        
-        console.log('✅ [Store] WebSocket initialized successfully');
       } catch (error) {
-        console.error('❌ [Store] Failed to initialize WebSocket:', error);
         commit('setError', 'Failed to initialize WebSocket connection');
       }
     },
     
     disconnectWebSocket({ commit, state }) {
       if (state.websocket) {
-        console.log('🔌 [Store] Disconnecting WebSocket');
         state.websocket.disconnect();
         commit('setWebSocket', null);
         commit('setWebSocketConnected', false);

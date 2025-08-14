@@ -36,7 +36,6 @@ class ChatWebSocket {
     try {
       // Determine WebSocket URL based on environment
       const wsUrl = this.getWebSocketUrl();
-      console.log('🔌 [WebSocket] Attempting connection to:', wsUrl);
       
       this.socket = new WebSocket(wsUrl);
       this.setupEventHandlers();
@@ -44,14 +43,12 @@ class ChatWebSocket {
       // Add connection timeout
       setTimeout(() => {
         if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
-          console.error('❌ [WebSocket] Connection timeout after 10 seconds');
           this.socket.close();
           this.handleReconnect();
         }
       }, 10000);
       
     } catch (error) {
-      console.error('❌ [WebSocket] Connection failed:', error);
       this.handleReconnect();
     }
   }
@@ -63,13 +60,11 @@ class ChatWebSocket {
     // Always use localhost:8080 for development, regardless of environment variables
     if (import.meta.env.DEV || window.location.hostname === 'localhost') {
       const url = 'ws://localhost:8080/ws';
-      console.log('🔌 [WebSocket] Development URL:', url);
       return url;
     } else {
       // Production: use secure WebSocket on same domain
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const url = `${protocol}//${window.location.host}/ws`;
-      console.log('🔌 [WebSocket] Production URL:', url);
       return url;
     }
   }
@@ -88,13 +83,11 @@ class ChatWebSocket {
    * Handle WebSocket connection open
    */
   handleOpen() {
-    console.log('✅ [WebSocket] Connected successfully');
     this.reconnectAttempts = 0;
     this.reconnectDelay = 1000;
     
     // Update store connection status
     store.commit('setWebSocketConnected', true);
-    console.log('🔍 [WebSocket] Store WebSocket status updated to connected');
     
     // Authenticate with the server
     this.authenticate();
@@ -117,24 +110,11 @@ class ChatWebSocket {
 
   /**
    * Process different types of WebSocket messages
-   * 
-   * Message Types:
-   * - CHAT_MESSAGE: User-facing chat messages (added to chat)
-   * - TYPING_START/STOP: Typing indicators (not added to chat)
-   * - SYSTEM_MESSAGE: System notifications (not added to chat)
-   * - ERROR_MESSAGE: System errors (not added to chat, but set error state)
-   * - AUTH_SUCCESS/FAILED: Authentication status (not added to chat)
-   * - MESSAGE_STATUS_UPDATE: Message delivery status (not added to chat)
-   * - TOKEN_REFRESH: New JWT token for expired sessions (not added to chat)
    */
   processMessage(data) {
-    console.log('🔍 [WebSocket] Processing message type:', data.type, 'Data:', data);
-    
     // If no type field, treat as a direct chat message
     if (!data.type) {
-      console.log('💬 [WebSocket] Direct chat message received (no type field):', data);
       store.commit('addChatMessage', data);
-      console.log('✅ [WebSocket] Direct message added to store, current chatHistory length:', store.getters.chatHistory.length);
       return;
     }
     
@@ -152,14 +132,11 @@ class ChatWebSocket {
         break;
         
       case 'CHAT_MESSAGE':
-        console.log('💬 [WebSocket] New chat message received:', data);
-        
         // Handle different message structures from backend
         let messageToAdd;
         if (data.payload) {
           // Backend sends { type: 'CHAT_MESSAGE', payload: {...} }
           messageToAdd = data.payload;
-          console.log('💬 [WebSocket] Extracted message from payload:', messageToAdd);
         } else if (data.message) {
           // Backend sends { type: 'CHAT_MESSAGE', message: {...} }
           messageToAdd = data.message;
@@ -171,13 +148,10 @@ class ChatWebSocket {
           messageToAdd = data;
         }
         
-        console.log('💬 [WebSocket] Processed message to add:', messageToAdd);
         store.commit('addChatMessage', messageToAdd);
-        console.log('✅ [WebSocket] Message added to store, current chatHistory length:', store.getters.chatHistory.length);
         break;
         
       case 'MESSAGE_STATUS_UPDATE':
-        console.log('🔄 [WebSocket] Message status update:', data);
         store.commit('updateMessageStatus', {
           messageId: data.messageId,
           status: data.status
@@ -185,7 +159,6 @@ class ChatWebSocket {
         break;
         
       case 'TYPING_START':
-        console.log('⌨️ [WebSocket] Typing started:', data);
         store.commit('setTypingIndicator', {
           userId: data.userId || 'assistant',
           isTyping: true
@@ -193,7 +166,6 @@ class ChatWebSocket {
         break;
         
       case 'TYPING_STOP':
-        console.log('⌨️ [WebSocket] Typing stopped:', data);
         store.commit('setTypingIndicator', {
           userId: data.userId || 'assistant',
           isTyping: false
@@ -201,37 +173,30 @@ class ChatWebSocket {
         break;
         
       case 'SYSTEM_MESSAGE':
-        console.log('ℹ️ [WebSocket] System message received:', data);
         // Check if this is a session expiration message
         if (data.payload && data.payload.includes('Session expired')) {
-          console.warn('⚠️ [WebSocket] Session expired message received, logging out user');
           this.handleSessionExpiration();
-        } else {
-          // Don't add other system messages to chat - just log them
-          // These are for system notifications, not user-facing messages
         }
         break;
         
       case 'TOKEN_REFRESH':
-        console.log('🔄 [WebSocket] Token refresh received:', data);
         // Store the new JWT token
         this.handleTokenRefresh(data.payload);
         break;
         
       case 'ERROR_MESSAGE':
-        console.error('❌ [WebSocket] Error message received:', data);
         // Don't add error messages to chat - just set error state
         // These are system errors, not user-facing messages
         store.commit('setError', data.payload);
         break;
         
       case 'ERROR':
-        console.error('❌ [WebSocket] Server error (legacy):', data.message);
         store.commit('setError', data.message);
         break;
         
       default:
-        console.warn('⚠️ [WebSocket] Unknown message type:', data.type);
+        // Unknown message type - ignore silently
+        break;
     }
   }
 
@@ -239,12 +204,6 @@ class ChatWebSocket {
    * Handle WebSocket connection close
    */
   handleClose(event) {
-    console.log('🔌 [WebSocket] Connection closed:', {
-      code: event.code,
-      reason: event.reason,
-      wasClean: event.wasClean
-    });
-    
     // Update store connection status
     store.commit('setWebSocketConnected', false);
     
@@ -263,7 +222,6 @@ class ChatWebSocket {
    * Handle WebSocket errors
    */
   handleError(error) {
-    console.error('❌ [WebSocket] Error occurred:', error);
     store.commit('setError', 'WebSocket connection error');
   }
 
@@ -280,8 +238,7 @@ class ChatWebSocket {
         token: currentToken
       };
       
-      console.log('🔐 [WebSocket] Sending authentication');
-      this.send(authMessage);
+          this.send(authMessage);
     }
   }
 
@@ -293,14 +250,11 @@ class ChatWebSocket {
       try {
         const message = JSON.stringify(data);
         this.socket.send(message);
-        console.log('📤 [WebSocket] Sent message:', data);
         return true;
       } catch (error) {
-        console.error('❌ [WebSocket] Failed to send message:', error);
         return false;
       }
     } else {
-      console.warn('⚠️ [WebSocket] Cannot send message - WebSocket state:', this.getConnectionStatus());
       // Fallback to REST API if WebSocket is not available
       this.fallbackToRestApi(data);
       return false;
@@ -311,7 +265,6 @@ class ChatWebSocket {
    * Fallback to REST API when WebSocket is unavailable
    */
   fallbackToRestApi(data) {
-    console.log('🔄 [WebSocket] Falling back to REST API');
     // This will be handled by the store's sendMessage action
   }
 
@@ -319,8 +272,6 @@ class ChatWebSocket {
    * Handle token refresh from backend
    */
   handleTokenRefresh(newToken) {
-    console.log('🔄 [WebSocket] Handling token refresh');
-    
     // Store the new token in the store
     store.commit('setToken', newToken);
     
@@ -332,7 +283,6 @@ class ChatWebSocket {
     
     // Set up timer to send acknowledgment within 2 minutes
     this.tokenRefreshTimer = setTimeout(() => {
-      console.warn('⚠️ [WebSocket] Token refresh acknowledgment timer expired');
       // If timer expires, we should have already sent the ack
       // This is just a safety check
     }, 120000); // 2 minutes
@@ -347,7 +297,6 @@ class ChatWebSocket {
       timestamp: Date.now()
     };
     
-    console.log('✅ [WebSocket] Sending token refresh acknowledgment');
     this.send(ackMessage);
     
     // Clear the timer since we sent the ack
@@ -361,8 +310,6 @@ class ChatWebSocket {
    * Handle session expiration
    */
   handleSessionExpiration() {
-    console.warn('⚠️ [WebSocket] Session expired, logging out user');
-    
     // Clear any existing timers
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
@@ -381,7 +328,6 @@ class ChatWebSocket {
    */
   handleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ [WebSocket] Max reconnection attempts reached');
       store.commit('setError', 'WebSocket connection failed after multiple attempts');
       return;
     }
@@ -392,8 +338,6 @@ class ChatWebSocket {
 
     this.reconnectAttempts++;
     const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay);
-    
-    console.log(`🔄 [WebSocket] Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
     
     this.reconnectTimer = setTimeout(() => {
       this.connect();
@@ -422,7 +366,6 @@ class ChatWebSocket {
     }
     
     store.commit('setWebSocketConnected', false);
-    console.log('🔌 [WebSocket] Disconnected intentionally');
   }
 
   /**
