@@ -28,8 +28,8 @@ FROM nginx:alpine AS production-stage
 # Copy built application from build stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Use default nginx configuration (server nginx will handle routing)
+# COPY nginx.conf /etc/nginx/nginx.conf
 
 # Expose port 80
 EXPOSE 80
