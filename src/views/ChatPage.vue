@@ -2,12 +2,26 @@
   <div class="chat-page">
     <div class="container">
       <div class="chat-container">
-        <div class="chat-sidebar">
+                <div class="chat-sidebar">
           <div class="sidebar-header">
             <h2 class="sidebar-title">Coach Chat</h2>
-            <button class="btn btn-icon" @click="refreshChat">
-              <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
-            </button>
+            <div class="header-actions">
+              <div class="connection-status" :class="connectionStatusClass">
+                <i :class="connectionStatusIcon"></i>
+                {{ connectionStatusText }}
+              </div>
+              <button class="btn btn-icon" @click="refreshChat">
+                <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
+              </button>
+              <button 
+                v-if="userHasScrolledUp" 
+                class="btn btn-icon" 
+                @click="scrollToLatestMessage"
+                title="Scroll to latest message"
+              >
+                <i class="fas fa-arrow-down"></i>
+              </button>
+            </div>
           </div>
           
           <div class="assistant-info">
@@ -50,6 +64,7 @@
             :messages="messages" 
             :loading="loading"
             @send-message="sendMessage"
+
           />
         </div>
       </div>
@@ -59,6 +74,7 @@
 
 <script>
 import ChatInterface from '@/components/ChatInterface.vue';
+import { generateMessageId } from '@/utils/messageUtils';
 
 export default {
   name: 'ChatPage',
@@ -70,6 +86,7 @@ export default {
       loading: false,
       refreshing: false,
       messages: [],
+
       suggestedTopics: [
         { 
           id: 'workout-plan', 
@@ -119,7 +136,20 @@ export default {
         });
       },
       deep: true
-    }
+    },
+    // Watch store's chatHistory for real-time WebSocket updates
+            '$store.getters.chatHistory': {
+          handler(newChatHistory) {
+            this.messages = [...newChatHistory];
+            
+            // Always scroll to latest message when store updates
+            this.$nextTick(() => {
+              this.scrollToLatestMessage();
+            });
+          },
+          deep: true,
+          immediate: true
+        }
   },
   async mounted() {
     await this.fetchChatHistory();
@@ -136,7 +166,7 @@ export default {
     if (this.messages.length === 0) {
       this.messages = [
         {
-          id: 'welcome',
+          id: generateMessageId('welcome'),
           sender: 'assistant',
           text: 'Hello! I\'m your FitCoach AI assistant. How can I help you with your fitness journey today?',
           timestamp: new Date().toISOString()
@@ -145,7 +175,11 @@ export default {
     }
     
     // Schedule scroll to latest message after everything is set up
-    this.scrollToLatestMessage();
+    this.$nextTick(() => {
+      this.scrollToLatestMessage();
+    });
+    
+
   },
   methods: {
     async fetchChatHistory() {
@@ -155,8 +189,10 @@ export default {
         await this.$store.dispatch('fetchChatHistory');
         this.messages = this.$store.getters.chatHistory;
         
-        // Schedule scroll to latest message after loading history
-        this.scrollToLatestMessage();
+        // Ensure we scroll to latest message after loading history
+        this.$nextTick(() => {
+          this.scrollToLatestMessage();
+        });
       } catch (error) {
         console.error('Error fetching chat history:', error);
       } finally {
@@ -179,7 +215,7 @@ export default {
         console.error('Error sending message:', error);
         // Add error message to chat
         this.messages.push({
-          id: (Date.now() + 1).toString(),
+          id: generateMessageId('error'),
           sender: 'assistant',
           text: 'Sorry, I encountered an error processing your request. Please try again.',
           timestamp: new Date().toISOString(),
@@ -200,7 +236,7 @@ export default {
       
       this.messages = [
         {
-          id: 'welcome',
+          id: generateMessageId('welcome'),
           sender: 'assistant',
           text: 'Chat cleared. How can I help you with your fitness journey today?',
           timestamp: new Date().toISOString()
@@ -216,8 +252,54 @@ export default {
         const chatInterface = this.$refs.chatInterface;
         if (chatInterface && chatInterface.scheduleScroll) {
           chatInterface.scheduleScroll();
+        } else {
+          // Fallback: try to scroll directly
+          this.fallbackScrollToBottom();
         }
       });
+    },
+    
+    // Fallback scroll method
+    fallbackScrollToBottom() {
+      const chatContainer = document.querySelector('.chat-messages');
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    },
+    
+
+    
+
+  },
+  computed: {
+    showNavigation() {
+      // Hide navigation on login, signup, and onboarding pages
+      const hiddenRoutes = ['login', 'signup', 'onboarding'];
+      return !hiddenRoutes.includes(this.$route.name);
+    },
+    
+    // WebSocket connection status
+    isWebSocketConnected() {
+      return this.$store.getters.isWebSocketConnected;
+    },
+    
+    connectionStatusClass() {
+      return {
+        'status-connected': this.isWebSocketConnected,
+        'status-disconnected': !this.isWebSocketConnected
+      };
+    },
+    
+    connectionStatusIcon() {
+      return this.isWebSocketConnected 
+        ? 'fas fa-wifi' 
+        : 'fas fa-wifi-slash';
+    },
+    
+    connectionStatusText() {
+      return this.isWebSocketConnected 
+        ? 'Connected' 
+        : 'Disconnected';
     }
   }
 };
@@ -265,6 +347,36 @@ export default {
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.connection-status.status-connected {
+  color: var(--success-color, #28a745);
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.connection-status.status-disconnected {
+  color: var(--danger-color, #dc3545);
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.connection-status i {
+  font-size: 0.875em;
 }
 
 .sidebar-title {

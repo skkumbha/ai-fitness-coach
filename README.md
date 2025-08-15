@@ -10,6 +10,7 @@ A personal AI fitness coach web application built with Vue.js frontend and Java 
 - **Progress Monitoring**: Track your fitness journey with visual charts
 - **Responsive Design**: Works on both desktop and mobile
 - **User Onboarding**: Multi-step onboarding process for personalized experience
+- **Message Idempotency**: Prevents duplicate message processing with unique message IDs
 
 ## 🏗️ Tech Stack
 
@@ -152,11 +153,62 @@ server {
 ```
 
 Enable the site:
-```bash
+   ```bash
 sudo ln -sf /etc/nginx/sites-available/fitness-coach /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+## 🔐 Message Idempotency
+
+The application implements message idempotency to prevent duplicate message processing and improve reliability.
+
+### How It Works
+
+1. **Unique Message IDs**: Each message gets a unique ID in the format `{type}_{timestamp}_{random}`
+   - Example: `msg_1703123456789_abc123def`
+   - Types: `msg` (user messages), `error` (error messages), `welcome` (welcome messages)
+
+2. **API Integration**: Message IDs are sent to the backend API for idempotency checking
+   ```javascript
+   // Frontend sends message with ID
+   const response = await sendChatMessage(messageText, messageId);
+   ```
+
+3. **Duplicate Prevention**: The store prevents duplicate messages from being added
+   ```javascript
+   addChatMessage(state, message) {
+     const existingMessage = state.chatHistory.find(m => m.id === message.id);
+     if (!existingMessage) {
+       state.chatHistory.push(message);
+     }
+   }
+   ```
+
+4. **Retry Protection**: Retry actions check if a message was already processed successfully
+   ```javascript
+   async retryMessage({ commit, state }, { messageId, messageText }) {
+     const existingMessage = state.chatHistory.find(m => m.id === messageId);
+     if (existingMessage?.status === 'acknowledged') {
+       return existingMessage; // Skip retry if already successful
+     }
+     // ... retry logic
+   }
+   ```
+
+### Benefits
+
+- **Prevents Duplicate Processing**: Same message won't be processed twice
+- **Improves Reliability**: Handles network retries gracefully
+- **Better User Experience**: No duplicate messages in chat
+- **API Efficiency**: Backend can skip processing duplicate requests
+
+### Implementation Details
+
+- **Utility Functions**: `src/utils/messageUtils.js` provides ID generation and validation
+- **Store Integration**: Vuex store handles idempotency checks
+- **API Layer**: Backend receives message IDs for duplicate detection
+- **Status Tracking**: Messages track their processing status (`sent` → `acknowledged`)
 
 ## 🔧 Troubleshooting
 

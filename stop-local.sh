@@ -1,10 +1,12 @@
 #!/bin/bash
 
-echo "🛑 Stopping local Fitness Coach Frontend..."
+echo "🛑 Stopping and cleaning up Fitness Coach Frontend containers..."
 
-# Configuration
-CONTAINER_NAME="fa-f"
-IMAGE_NAME="fitness-coach-frontend-local"
+# Configuration - handle both old and new container names
+OLD_CONTAINER_NAME="fa-f"
+NEW_CONTAINER_NAME="fa-f-dev"
+OLD_IMAGE_NAME="fitness-coach-frontend-local"
+NEW_IMAGE_NAME="fitness-coach-frontend-dev"
 
 # Colors for output
 RED='\033[0;31m'
@@ -26,26 +28,46 @@ print_warning() {
     echo -e "${YELLOW}$1${NC}"
 }
 
-# Step 1: Stop container
-print_status "🛑 Stopping container..."
-docker stop "$CONTAINER_NAME" 2>/dev/null || true
+print_error() {
+    echo -e "${RED}$1${NC}"
+}
 
-# Step 2: Remove container
-print_status "🗑️  Removing container..."
-docker rm "$CONTAINER_NAME" 2>/dev/null || true
+# Function to stop and remove container
+stop_container() {
+    local container_name=$1
+    local image_name=$2
+    
+    if docker ps -a | grep -q "$container_name"; then
+        print_status "🛑 Stopping container: $container_name"
+        docker stop "$container_name" 2>/dev/null || true
+        
+        print_status "🗑️  Removing container: $container_name"
+        docker rm "$container_name" 2>/dev/null || true
+        
+        print_success "✅ Container $container_name stopped and removed"
+        
+        # Optionally remove the image
+        if [ "$3" = "remove-image" ]; then
+            if docker images | grep -q "$image_name"; then
+                print_status "🗑️  Removing image: $image_name"
+                docker rmi "$image_name" 2>/dev/null || true
+                print_success "✅ Image $image_name removed"
+            fi
+        fi
+    else
+        print_warning "⚠️  Container $container_name not found"
+    fi
+}
 
-# Step 3: Check if user wants to remove image too
+# Stop and remove both old and new containers
+stop_container "$OLD_CONTAINER_NAME" "$OLD_IMAGE_NAME"
+stop_container "$NEW_CONTAINER_NAME" "$NEW_IMAGE_NAME"
+
 echo ""
-read -p "Do you want to remove the local Docker image as well? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_status "🗑️  Removing local image..."
-    docker rmi "$IMAGE_NAME" 2>/dev/null || true
-    print_success "✅ Local image removed!"
-fi
-
-print_success "✅ Local development environment cleaned up!"
+print_success "🎉 Cleanup completed!"
 echo ""
-echo "📋 Container and image status:"
-docker ps -a --filter name="$CONTAINER_NAME" --format "{{.ID}}\t{{.Image}}\t{{.Names}}" | grep . || echo "   No containers found"
-docker images --filter reference="$IMAGE_NAME" --format "{{.ID}}\t{{.Repository}}\t{{.Tag}}" | grep . || echo "   No images found"
+echo "📋 Remaining containers:"
+docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(fa-f|fitness-coach)" || echo "   No fitness coach containers found"
+echo ""
+echo "📋 Remaining images:"
+docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(fitness-coach)" || echo "   No fitness coach images found"

@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 8081,
+    port: 3000,
     strictPort: true,
     cors: true,
     hmr: {
