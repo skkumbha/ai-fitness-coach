@@ -50,7 +50,8 @@ jobs:
             ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.DOCKER_IMAGE }}:latest
           build-args: |
-            VITE_API_URL=http://fit.kish.rs/api
+            VITE_API_URL=https://fit.kish.rs/api
+            VITE_WEBSOCKET_URL=wss://fit.kish.rs/ws
           cache-from: type=gha
           cache-to: type=gha,mode=max
           
