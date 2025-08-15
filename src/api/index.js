@@ -4,7 +4,7 @@ import router from '@/router';
 
 // Create axios instance with default config
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8080/api' : `https://${window.location.hostname}/api`),
+  baseURL: import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8080/api' : `https://fit.kish.rs/api`),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
