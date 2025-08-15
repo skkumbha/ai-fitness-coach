@@ -16,23 +16,13 @@ const API = axios.create({
 API.interceptors.request.use(
   (config) => {
     const token = store.state.token;
-    console.log('🔵 [API] Request:', {
-      url: config.url,
-      method: config.method,
-      hasToken: !!token,
-      headers: config.headers
-    });
     
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      console.log('✅ [API] Authorization header set');
-    } else {
-      console.log('⚠️ [API] No token available for request');
     }
     return config;
   },
   (error) => {
-    console.error('❌ [API] Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -40,26 +30,13 @@ API.interceptors.request.use(
 // Response interceptor for API calls
 API.interceptors.response.use(
   (response) => {
-    console.log('✅ [API] Response:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data
-    });
     return response;
   },
   async (error) => {
-    console.error('❌ [API] Response Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data
-    });
-    
     const originalRequest = error.config;
     
     // Handle 401 Unauthorized errors
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      console.log('⚠️ [API] 401 Unauthorized error, clearing token');
       originalRequest._retry = true;
       
       // If token has expired, redirect to login
@@ -67,7 +44,6 @@ API.interceptors.response.use(
       store.commit('setUser', null);
       
       if (router.currentRoute.value.meta.requiresAuth) {
-        console.log('🔵 [API] Redirecting to login page');
         router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } });
       }
     }
