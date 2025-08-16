@@ -9,6 +9,27 @@ When you create a git tag (e.g., `v1.0.0`), GitHub Actions automatically:
 2. Pushes it to Docker Hub with the version tag
 3. Creates a GitHub release with deployment instructions
 
+## 🔄 Development Workflow
+
+### Local Development
+```bash
+# Run the app locally for testing
+./run-local.sh
+```
+
+### Release Process
+```bash
+# 1. Test locally until satisfied
+./run-local.sh
+
+# 2. Create release tag
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+
+# 3. GitHub Actions builds and publishes Docker image
+# 4. Deploy the new image on your server
+```
+
 ## 🏷️ Git Tags Benefits
 
 - **Version Tracking**: Each release has a specific version (v1.0.0, v1.1.0, etc.)
@@ -27,6 +48,19 @@ DOCKERHUB_USERNAME=sreeramkumbham
 DOCKERHUB_TOKEN=your_dockerhub_access_token
 ```
 
+### 2. Project Structure
+Your project now has a clean, focused structure:
+```
+ai-fitness-coach/
+├── src/                    # Source code
+├── .github/workflows/      # CI/CD (docker-build.yml)
+├── Dockerfile              # Production builds
+├── Dockerfile.dev          # Local development
+├── run-local.sh            # Local development script
+├── package.json            # Dependencies
+└── README.md               # Documentation
+```
+
 ### 2. Docker Hub Access Token
 1. Go to Docker Hub → Account Settings → Security
 2. Create a new access token
@@ -34,20 +68,7 @@ DOCKERHUB_TOKEN=your_dockerhub_access_token
 
 ## 🚀 Creating a Release
 
-### Option 1: Using the Release Script (Recommended)
-
-```bash
-# Make sure you're on the main branch
-git checkout main
-
-# Run the release script
-./scripts/create-release.sh
-
-# Or specify version directly
-./scripts/create-release.sh 1.0.0
-```
-
-### Option 2: Manual Process
+### Manual Process (Recommended)
 
 ```bash
 # 1. Ensure you're on main branch
@@ -157,7 +178,7 @@ git push origin v1.0.1
 
 ## 📝 Best Practices
 
-1. **Always test locally** before creating a release
+1. **Always test locally** using `./run-local.sh` before creating a release
 2. **Use semantic versioning** for clear version history
 3. **Write meaningful commit messages** before tagging
 4. **Test the deployed version** after release
@@ -179,7 +200,10 @@ git push origin --delete v1.0.0
 # Check current version
 npm version
 
-# Build locally to test
+# Test locally before release
+./run-local.sh
+
+# Build locally to test (if needed)
 docker build -t test-image .
 docker run -p 3000:80 test-image
 ``` 
