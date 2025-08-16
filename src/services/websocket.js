@@ -57,16 +57,21 @@ class ChatWebSocket {
    * Get WebSocket URL based on environment
    */
   getWebSocketUrl() {
-    // Always use localhost:8080 for development, regardless of environment variables
+    // Check for environment-specific WebSocket URL first
+    if (import.meta.env.VITE_WEBSOCKET_URL) {
+      return import.meta.env.VITE_WEBSOCKET_URL;
+    }
+    
+    // Development: use localhost:8080 for backend WebSocket
     if (import.meta.env.DEV || window.location.hostname === 'localhost') {
       const url = 'ws://localhost:8080/ws';
       return url;
-    } else {
-      // Production: use secure WebSocket on same domain
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const url = `${protocol}//${window.location.host}/ws`;
-      return url;
     }
+    
+    // Production: use secure WebSocket on same domain
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${protocol}//${window.location.host}/ws`;
+    return url;
   }
 
   /**
