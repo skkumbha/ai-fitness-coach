@@ -54,6 +54,7 @@
           <div class="typing-text">{{ typingIndicatorText }}</div>
         </div>
       </div>
+      <div ref="messagesEnd" class="messages-anchor" aria-hidden="true"></div>
     </div>
     
     <div class="chat-input-container">
@@ -62,7 +63,9 @@
           ref="messageInput"
           v-model="newMessage"
           class="message-textarea"
-          placeholder="Type your message here..."
+          placeholder="Message"
+          rows="1"
+          @input="autoResizeTextarea"
           @keydown.enter.prevent="handleEnterKey"
           :disabled="loading"
         ></textarea>
@@ -123,14 +126,22 @@ export default {
         this.scheduleScroll();
       },
       deep: true
+    },
+    isTyping() {
+      this.scheduleScroll();
+    },
+    loading() {
+      this.scheduleScroll();
     }
   },
   mounted() {
-    // Focus input on mount
-    this.$refs.messageInput.focus();
-    
-    // Initial scroll to bottom
+    this.resetTextareaHeight();
     this.scheduleScroll();
+    this.$nextTick(() => {
+      if (this.$refs.messageInput) {
+        this.$refs.messageInput.focus();
+      }
+    });
   },
   methods: {
     sendMessage() {
@@ -139,10 +150,24 @@ export default {
       this.$emit('send-message', this.newMessage.trim());
       this.newMessage = '';
       
-      // Refocus the input after sending
       this.$nextTick(() => {
+        this.resetTextareaHeight();
         this.$refs.messageInput.focus();
       });
+    },
+    
+    autoResizeTextarea() {
+      const el = this.$refs.messageInput;
+      if (!el) return;
+      el.style.height = 'auto';
+      const maxHeight = 120;
+      el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    },
+    
+    resetTextareaHeight() {
+      const el = this.$refs.messageInput;
+      if (!el) return;
+      el.style.height = '42px';
     },
     
     sendSuggestion(suggestion) {
@@ -159,17 +184,26 @@ export default {
     
     scrollToBottom() {
       const container = this.$refs.chatMessages;
-      
+      const anchor = this.$refs.messagesEnd;
+
+      if (anchor) {
+        anchor.scrollIntoView({ block: 'end', behavior: 'auto' });
+      }
+
       if (container) {
         container.scrollTop = container.scrollHeight;
       }
     },
-    
+
     scheduleScroll() {
-      // Use a single $nextTick with requestAnimationFrame for optimal timing
+      const run = () => this.scrollToBottom();
+
       this.$nextTick(() => {
         requestAnimationFrame(() => {
-          this.scrollToBottom();
+          requestAnimationFrame(run);
+          setTimeout(run, 50);
+          setTimeout(run, 150);
+          setTimeout(run, 300);
         });
       });
     },
@@ -225,16 +259,17 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--card-background);
+  min-height: 0;
+  background-color: #efeae2;
 }
 
 .chat-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md);
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border-color);
-  background-color: rgba(76, 175, 80, 0.05);
+  background-color: #f0f2f5;
   flex-shrink: 0;
 }
 
@@ -301,17 +336,25 @@ export default {
   color: var(--text-color);
 }
 
+.messages-anchor {
+  height: 1px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
 .chat-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--spacing-md);
-  background-color: rgba(0, 0, 0, 0.02);
+  overflow-x: hidden;
+  padding: 12px 16px;
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4cfc7' fill-opacity='0.25'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   display: flex;
   flex-direction: column;
-  /* Ensure proper flexbox behavior for messages */
   align-items: stretch;
-  /* Force proper message alignment */
   justify-content: flex-start;
+  -webkit-overflow-scrolling: touch;
 }
 
 .empty-chat {
@@ -378,7 +421,7 @@ export default {
 .chat-interface .chat-messages .message {
   display: flex !important;
   align-items: flex-start !important;
-  margin-bottom: var(--spacing-md) !important;
+  margin-bottom: 6px !important;
   gap: var(--spacing-sm) !important;
   width: 100% !important;
   min-width: 100% !important;
@@ -413,32 +456,31 @@ export default {
 
 
 .chat-interface .chat-messages .message-bubble {
-  max-width: 70% !important;
-  padding: var(--spacing-sm) var(--spacing-md) !important;
-  border-radius: var(--border-radius-md) !important;
+  max-width: min(88%, 560px) !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
   position: relative !important;
   word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
   box-sizing: border-box !important;
-  /* Ensure proper text alignment */
   text-align: left !important;
-  /* Ensure proper flexbox behavior */
   flex-shrink: 1 !important;
   flex-grow: 0 !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
 }
 
 .chat-interface .chat-messages .message.user-message .message-bubble {
-  background-color: var(--primary-color) !important;
-  color: white !important;
-  border-radius: var(--border-radius-md) var(--border-radius-md) var(--border-radius-md) 0;
-  /* Force right alignment for user messages */
+  background-color: #d9fdd3 !important;
+  color: #111b21 !important;
+  border-radius: 8px 8px 0 8px;
   margin-left: auto !important;
   margin-right: 0 !important;
 }
 
 .chat-interface .chat-messages .message.assistant-message .message-bubble {
-  background-color: rgba(76, 175, 80, 0.1) !important;
-  color: var(--text-color) !important;
-  border-radius: var(--border-radius-md) var(--border-radius-md) 0 var(--border-radius-md);
+  background-color: #ffffff !important;
+  color: #111b21 !important;
+  border-radius: 8px 8px 8px 0;
 }
 
 /* Message delivery states - using only colors */
@@ -459,14 +501,20 @@ export default {
 
 .message-text {
   white-space: pre-wrap;
-  line-height: 1.5;
+  line-height: 1.45;
+  font-size: 0.9375rem;
+  overflow: visible;
 }
 
 .message-timestamp {
-  font-size: var(--font-size-xs);
-  opacity: 0.7;
+  font-size: 0.6875rem;
+  color: rgba(17, 27, 33, 0.5);
   text-align: right;
-  margin-top: var(--spacing-xs);
+  margin-top: 4px;
+}
+
+.user-message .message-timestamp {
+  color: rgba(17, 27, 33, 0.45);
 }
 
 .error-text {
@@ -557,31 +605,34 @@ export default {
 
 .chat-input-container {
   flex-shrink: 0;
-  padding: var(--spacing-md);
-  background-color: var(--card-background);
+  padding: 8px 12px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background-color: #f0f2f5;
   border-top: 1px solid var(--border-color);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .chat-input {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .message-textarea {
   flex: 1;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-md);
+  border: none;
+  border-radius: 24px;
+  padding: 10px 16px;
+  font-size: 0.9375rem;
   resize: none;
-  min-height: 60px;
-  max-height: 150px;
+  min-height: 42px;
+  max-height: 120px;
+  height: 42px;
+  overflow-y: auto;
   font-family: var(--font-family);
-  line-height: 1.5;
-  background-color: var(--background-color);
+  line-height: 1.4;
+  background-color: #ffffff;
   color: var(--text-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .message-textarea:focus {
@@ -596,8 +647,9 @@ export default {
 }
 
 .send-button {
-  width: 60px;
-  height: 60px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
   border-radius: 50%;
   background-color: var(--primary-color);
   color: white;
@@ -605,9 +657,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-lg);
+  font-size: 1rem;
   cursor: pointer;
   transition: all var(--transition-fast);
+  flex-shrink: 0;
+  margin-bottom: 0;
 }
 
 .send-button:hover {
@@ -620,21 +674,16 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .chat-interface {
-    min-height: calc(100vh - 140px);
+  .chat-interface .chat-messages .message-bubble {
+    max-width: 92% !important;
   }
-  
-  .message-content {
-    max-width: 90%;
+
+  .chat-messages {
+    padding: 10px 12px;
   }
-  
-  .suggestion-chips {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .suggestion-chip {
-    text-align: left;
+
+  .chat-header {
+    padding: 8px 12px;
   }
 }
 </style>

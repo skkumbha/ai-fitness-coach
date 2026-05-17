@@ -1,10 +1,10 @@
 <template>
   <div id="app" class="app-container">
     <Navbar v-if="showNavigation" />
-    <main class="main-content">
+    <main class="main-content" :class="{ 'main-content--chat': isChatPage }">
       <router-view />
     </main>
-    <Footer v-if="showNavigation" />
+    <Footer v-if="showFooter" />
   </div>
 </template>
 
@@ -23,6 +23,12 @@ export default {
       // Hide navigation on login, signup, and onboarding pages
       const hiddenRoutes = ['login', 'signup', 'onboarding'];
       return !hiddenRoutes.includes(this.$route.name);
+    },
+    isChatPage() {
+      return this.$route.name === 'chat';
+    },
+    showFooter() {
+      return this.showNavigation && !this.isChatPage;
     }
   },
   created() {
@@ -64,9 +70,22 @@ export default {
   margin-bottom: 60px; /* Adjust based on footer height */
 }
 
+.main-content--chat {
+  padding: 0;
+  margin-bottom: 0;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 @media (max-width: 768px) {
   .main-content {
     padding: 15px;
+  }
+
+  .main-content--chat {
+    padding: 0;
   }
 }
 </style>
