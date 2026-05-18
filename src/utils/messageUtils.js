@@ -3,6 +3,81 @@
  * @param {string} prefix - Prefix for the message type (e.g., 'msg', 'error', 'welcome')
  * @returns {string} - Unique idempotency key
  */
+const STATUS_ACK_PATTERNS = [
+  /^message\s+received\.?$/i,
+  /^message\s+sent\.?$/i,
+  /^message\s+delivered\.?$/i,
+  /^message\s+acknowledged\.?$/i,
+  /^message\s+processed\.?$/i,
+  /^received\.?$/i,
+  /^sent\.?$/i,
+  /^acknowledged\.?$/i
+];
+
+/**
+ * Returns true for WebSocket/REST delivery acks that are not coach replies.
+ */
+export const isStatusAckMessage = (text) => {
+  if (!text || typeof text !== 'string') {
+    return false;
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return STATUS_ACK_PATTERNS.some(pattern => pattern.test(trimmed));
+};
+
+export const getMessageText = (message) => {
+  if (!message) return '';
+  if (typeof message === 'string') return message;
+  return message.text || message.message || message.content || message.body || '';
+};
+
+export const getMessageSender = (message) => {
+  if (!message) return 'assistant';
+  if (message.sender) {
+    const sender = String(message.sender).toLowerCase();
+    return sender === 'ai' ? 'assistant' : sender;
+  }
+  if (message.role) {
+    const role = String(message.role).toLowerCase();
+    if (role === 'user' || role === 'human') return 'user';
+    return 'assistant';
+  }
+  return 'assistant';
+};
+
+export const isAssistantReply = (message) => {
+  return getMessageSender(message) === 'assistant' && !isStatusAckMessage(getMessageText(message));
+};
+
+/** Normalize any history entry (user or assistant) for display */
+export const normalizeHistoryEntry = (message) => {
+  if (!message || typeof message !== 'object') return null;
+
+  const text = getMessageText(message);
+  if (!text || isStatusAckMessage(text)) return null;
+
+  const sender = getMessageSender(message);
+  if (sender === 'system') return null;
+
+  return {
+    ...message,
+    id: message.id || generateIdempotencyKey('msg'),
+    sender,
+    text,
+    timestamp: message.timestamp || new Date().toISOString()
+  };
+};
+
+/** Normalize incoming assistant payloads from WebSocket */
+export const normalizeChatMessage = (message) => {
+  const entry = normalizeHistoryEntry(message);
+  if (!entry || entry.sender === 'user') return null;
+  return entry;
+};
+
 export const generateIdempotencyKey = (prefix = 'msg') => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substr(2, 9);

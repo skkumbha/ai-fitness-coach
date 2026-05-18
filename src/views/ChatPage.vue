@@ -3,7 +3,7 @@
     <ChatInterface
       ref="chatInterface"
       :messages="messages"
-      :loading="loading"
+      :loading="isSending"
       @send-message="sendMessage"
       @clear-chat="clearChat"
     />
@@ -13,6 +13,7 @@
 <script>
 import ChatInterface from '@/components/ChatInterface.vue';
 import { generateMessageId } from '@/utils/messageUtils';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'ChatPage',
@@ -21,8 +22,7 @@ export default {
   },
   data() {
     return {
-      loading: false,
-      messages: [],
+      isSending: false,
       suggestedTopics: [
         {
           id: 'workout-plan',
@@ -63,6 +63,15 @@ export default {
       ]
     };
   },
+  computed: {
+    ...mapGetters(['chatHistory', 'typingIndicators']),
+    messages() {
+      return this.chatHistory;
+    },
+    isAssistantTyping() {
+      return !!this.typingIndicators?.assistant;
+    }
+  },
   watch: {
     messages: {
       handler() {
@@ -70,18 +79,8 @@ export default {
       },
       deep: true
     },
-    '$store.getters.chatHistory': {
-      handler(newChatHistory) {
-        this.messages = [...newChatHistory];
-        this.scrollToLatestMessage();
-      },
-      deep: true,
-      immediate: true
-    },
-    loading(isLoading) {
-      if (!isLoading) {
-        this.scrollToLatestMessage();
-      }
+    isAssistantTyping() {
+      this.scrollToLatestMessage();
     }
   },
   async mounted() {
@@ -95,29 +94,23 @@ export default {
     }
 
     if (this.messages.length === 0) {
-      this.messages = [
-        {
-          id: generateMessageId('welcome'),
-          sender: 'assistant',
-          text: 'Hello! I\'m your FitCoach AI assistant. How can I help you with your fitness journey today?',
-          timestamp: new Date().toISOString()
-        }
-      ];
+      this.$store.commit('addChatMessage', {
+        id: generateMessageId('welcome'),
+        sender: 'assistant',
+        text: 'Hello! I\'m your FitCoach AI assistant. How can I help you with your fitness journey today?',
+        timestamp: new Date().toISOString()
+      });
     }
 
     this.scrollToLatestMessage();
   },
   methods: {
     async fetchChatHistory() {
-      this.loading = true;
-
       try {
         await this.$store.dispatch('fetchChatHistory');
-        this.messages = this.$store.getters.chatHistory;
       } catch (error) {
         console.error('Error fetching chat history:', error);
       } finally {
-        this.loading = false;
         this.scrollToLatestMessage();
       }
     },
@@ -125,17 +118,22 @@ export default {
     async sendMessage(messageText) {
       if (!messageText.trim()) return;
 
+      this.isSending = true;
       try {
         await this.$store.dispatch('sendMessage', messageText);
+        this.scrollToLatestMessage();
       } catch (error) {
         console.error('Error sending message:', error);
-        this.messages.push({
+        this.$store.commit('addChatMessage', {
           id: generateMessageId('error'),
           sender: 'assistant',
           text: 'Sorry, I encountered an error processing your request. Please try again.',
           timestamp: new Date().toISOString(),
           isError: true
         });
+      } finally {
+        this.isSending = false;
+        this.scrollToLatestMessage();
       }
     },
 
@@ -148,14 +146,15 @@ export default {
         return;
       }
 
-      this.messages = [
+      this.$store.commit('setChatHistory', [
         {
           id: generateMessageId('welcome'),
           sender: 'assistant',
           text: 'Chat cleared. How can I help you with your fitness journey today?',
           timestamp: new Date().toISOString()
         }
-      ];
+      ]);
+      this.$store.commit('setTypingIndicator', { userId: 'assistant', isTyping: false });
       this.scrollToLatestMessage();
     },
 

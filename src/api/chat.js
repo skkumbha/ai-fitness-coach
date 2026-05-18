@@ -21,9 +21,11 @@ export const getChatHistory = async () => {
  */
 export const sendChatMessage = async (message, idempotencyKey) => {
   try {
-    const response = await API.post('/chat/message', { 
+    const response = await API.post('/chat/message', {
       message,
-      idempotencyKey 
+      idempotencyKey
+    }, {
+      timeout: 120000
     });
     return response.data;
   } catch (error) {

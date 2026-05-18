@@ -17,7 +17,7 @@ import {
   getChatHistory,
   sendChatMessage 
 } from '@/api/chat';
-import { generateMessageId } from '@/utils/messageUtils';
+import { generateMessageId, isStatusAckMessage } from '@/utils/messageUtils';
 import ChatWebSocket from '@/services/websocket';
 
 export default createStore({
@@ -48,6 +48,7 @@ export default createStore({
   },
   
   getters: {
+    token: state => state.token,
     isAuthenticated: state => !!state.token,
     currentUser: state => state.user,
     hasCompletedOnboarding: state => state.hasCompletedOnboarding,
@@ -99,34 +100,39 @@ export default createStore({
     
     // Chat mutations
     setChatHistory(state, messages) {
-      state.chatHistory = messages;
+      state.chatHistory = (messages || []).filter(m => {
+        const text = m?.text || m?.message || '';
+        return !isStatusAckMessage(text);
+      });
     },
     addChatMessage(state, message) {
-      // Validate message structure
       if (!message || typeof message !== 'object') {
         return;
       }
-      
-      // Ensure message has required fields
+
+      const text = message.text || message.message || '';
+      if (isStatusAckMessage(text)) {
+        state.typingIndicators = { ...state.typingIndicators, assistant: true };
+        return;
+      }
+
       const validatedMessage = {
         id: message.id || generateMessageId('msg'),
         sender: message.sender || 'assistant',
-        text: message.text || message.message || 'No message content',
+        text: text || 'No message content',
         timestamp: message.timestamp || new Date().toISOString(),
         status: message.status || 'received',
-        ...message // Keep any additional fields
+        ...message
       };
-      
-      // Check if message with this ID or idempotency key already exists (idempotency)
-      const existingMessage = state.chatHistory.find(m => 
-        m.id === validatedMessage.id || 
+
+      const existingMessage = state.chatHistory.find(m =>
+        m.id === validatedMessage.id ||
         (validatedMessage.idempotencyKey && m.idempotencyKey === validatedMessage.idempotencyKey)
       );
-      
+
       if (!existingMessage) {
         state.chatHistory.push(validatedMessage);
-        
-        // Stop typing indicator when a message is received from the same sender
+
         if (validatedMessage.sender === 'assistant' && state.typingIndicators.assistant) {
           delete state.typingIndicators.assistant;
         }
@@ -331,7 +337,7 @@ export default createStore({
     // Chat actions
     async fetchChatHistory({ commit }) {
       commit('setLoading', true);
-      
+
       try {
         const messages = await getChatHistory();
         commit('setChatHistory', messages);
@@ -342,47 +348,78 @@ export default createStore({
         commit('setLoading', false);
       }
     },
-    
+
     async sendMessage({ commit, state, dispatch }, messageText) {
       commit('clearError');
+
+      const idempotencyKey = generateMessageId('msg');
+      const userMessage = {
+        id: idempotencyKey,
+        sender: 'user',
+        text: messageText,
+        timestamp: new Date().toISOString(),
+        status: 'sent',
+        idempotencyKey
+      };
+
+      commit('addChatMessage', userMessage);
+      commit('setTypingIndicator', { userId: 'assistant', isTyping: true });
+
+      const wsConnected = state.websocket?.isConnected?.();
+
       try {
-        const idempotencyKey = generateMessageId('msg');
-        const userMessage = {
-          id: idempotencyKey, sender: 'user', text: messageText,
-          timestamp: new Date().toISOString(), status: 'sent', idempotencyKey: idempotencyKey
-        };
-        commit('addChatMessage', userMessage);
-        
-        if (state.websocket && state.isWebSocketConnected) {
-          const success = state.websocket.send({ 
-            type: 'CHAT_MESSAGE', 
-            message: messageText, 
-            idempotencyKey: idempotencyKey 
+        // Backend delivers GPT replies over WebSocket (REST only returns "Message received" ack).
+        if (wsConnected) {
+          const sent = state.websocket.send({
+            type: 'CHAT_MESSAGE',
+            message: messageText,
+            idempotencyKey
           });
-          
-          if (success) {
-            commit('updateMessageStatus', { messageId: userMessage.id, status: 'sent' });
-            return { success: true, message: 'Message sent via WebSocket' };
+          if (!sent) {
+            throw new Error('WebSocket is not ready. Please wait and try again.');
           }
+          commit('updateMessageStatus', { messageId: userMessage.id, status: 'acknowledged' });
+          return;
         }
-        
-        // Fallback to REST API
+
+        const assistantCountBefore = state.chatHistory.filter(
+          (m) => (m.sender === 'assistant' || m.sender === 'ai')
+            && !isStatusAckMessage(m.text || m.message)
+        ).length;
+
         const response = await sendChatMessage(messageText, idempotencyKey);
         commit('updateMessageStatus', { messageId: userMessage.id, status: 'acknowledged' });
-        commit('updateMessageId', { oldId: userMessage.id, newId: response.id });
-        commit('addChatMessage', {
-          id: response.id,
-          sender: 'assistant',
-          text: response.text,
-          timestamp: response.timestamp
-        });
+
+        await dispatch('waitForAssistantReply', { assistantCountBefore });
+
         return response;
       } catch (error) {
         commit('setError', error.message || 'Failed to send message');
+        commit('setTypingIndicator', { userId: 'assistant', isTyping: false });
         throw error;
       }
     },
-    
+
+    async waitForAssistantReply({ dispatch, state, commit }, { assistantCountBefore, maxAttempts = 30, intervalMs = 2000 }) {
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+        await dispatch('fetchChatHistory');
+
+        const assistantCountNow = state.chatHistory.filter(
+          (m) => (m.sender === 'assistant' || m.sender === 'ai')
+            && !isStatusAckMessage(m.text || m.message)
+        ).length;
+
+        if (assistantCountNow > assistantCountBefore) {
+          commit('setTypingIndicator', { userId: 'assistant', isTyping: false });
+          return;
+        }
+      }
+
+      commit('setTypingIndicator', { userId: 'assistant', isTyping: false });
+      throw new Error('Assistant reply timed out. Check your connection and try again.');
+    },
+
     // Retry sending a message with idempotency protection
     async retryMessage({ commit, state, dispatch }, { idempotencyKey, messageText }) {
       // Check if message already exists and was successful
@@ -408,12 +445,20 @@ export default createStore({
       if (!state.token) {
         return;
       }
-      
+
       try {
+        if (state.websocket?.isConnected?.()) {
+          return;
+        }
+
+        if (state.websocket) {
+          state.websocket.disconnect();
+          commit('setWebSocket', null);
+          commit('setWebSocketConnected', false);
+        }
+
         const websocket = new ChatWebSocket(state.token);
         commit('setWebSocket', websocket);
-        
-        // Connect to WebSocket
         websocket.connect();
       } catch (error) {
         commit('setError', 'Failed to initialize WebSocket connection');
@@ -429,10 +474,9 @@ export default createStore({
     },
     
     sendTypingIndicator({ state }, isTyping) {
-      if (state.websocket && state.isWebSocketConnected) {
+      if (state.websocket?.isConnected?.()) {
         state.websocket.send({
-          type: 'TYPING_INDICATOR',
-          isTyping: isTyping
+          type: isTyping ? 'TYPING_START' : 'TYPING_STOP'
         });
       }
     }

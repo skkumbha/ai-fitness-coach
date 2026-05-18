@@ -9,7 +9,7 @@
           <h3 class="assistant-name">FitCoach AI</h3>
           <div class="assistant-status">
             <span class="status-dot"></span>
-            <span class="status-text">{{ loading ? 'Typing...' : 'Online' }}</span>
+            <span class="status-text">{{ isTyping ? 'Typing...' : 'Online' }}</span>
           </div>
         </div>
       </div>
@@ -25,7 +25,7 @@
     
             <div class="chat-messages" ref="chatMessages">
       <div 
-        v-for="message in messages" 
+        v-for="message in displayMessages" 
         :key="message.id" 
         class="message"
         :class="[
@@ -36,7 +36,15 @@
 
       >
         <div class="message-bubble">
-          <div class="message-text">{{ message.text }}</div>
+          <div
+            v-if="message.sender === 'user'"
+            class="message-text"
+          >{{ message.text }}</div>
+          <div
+            v-else
+            class="message-text message-text--formatted"
+            v-html="formatMessage(message.text)"
+          />
           <div class="message-timestamp">
             {{ formatTimestamp(message.timestamp) }}
           </div>
@@ -44,9 +52,9 @@
       </div>
       
       <!-- Typing indicator -->
-      <div v-if="isTyping" class="message message-assistant">
-        <div class="message-bubble typing-indicator">
-          <div class="typing-dots">
+      <div v-if="isTyping" class="message assistant-message typing-message">
+        <div class="message-bubble typing-indicator-bubble">
+          <div class="typing-dots" aria-label="FitCoach AI is typing">
             <span></span>
             <span></span>
             <span></span>
@@ -82,6 +90,8 @@
 </template>
 
 <script>
+import { isStatusAckMessage } from '@/utils/messageUtils';
+
 export default {
   name: 'ChatInterface',
   props: {
@@ -112,10 +122,13 @@ export default {
     },
     // Check if AI is typing based on WebSocket typing indicators
     isTyping() {
-      return this.$store.getters.typingIndicators.assistant || false;
+      return !!this.$store.getters.typingIndicators?.assistant;
     },
     
-    // Dynamic typing indicator text
+    displayMessages() {
+      return this.messages.filter(m => !isStatusAckMessage(m.text || m.message));
+    },
+
     typingIndicatorText() {
       return 'FitCoach AI is thinking...';
     }
@@ -236,6 +249,11 @@ export default {
       formattedText = formattedText.replace(/\n/g, '<br>');
       
       // Format basic markdown
+      // Headers
+      formattedText = formattedText.replace(/^### (.*?)$/gm, '<h4>$1</h4>');
+      formattedText = formattedText.replace(/^## (.*?)$/gm, '<h3>$1</h3>');
+      formattedText = formattedText.replace(/^# (.*?)$/gm, '<h2>$1</h2>');
+
       // Bold
       formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       
@@ -557,6 +575,32 @@ export default {
   justify-content: center;
   font-size: var(--font-size-md);
   margin-right: var(--spacing-sm);
+}
+
+.typing-indicator-bubble {
+  background-color: #ffffff !important;
+  padding: 12px 16px !important;
+  min-width: 56px;
+}
+
+.typing-message {
+  margin-bottom: 6px !important;
+}
+
+.message-text--formatted :deep(h2),
+.message-text--formatted :deep(h3),
+.message-text--formatted :deep(h4) {
+  margin: 0.5em 0 0.25em;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.message-text--formatted :deep(h2) {
+  font-size: 1.05em;
+}
+
+.message-text--formatted :deep(p) {
+  margin: 0.25em 0;
 }
 
 .typing-indicator {
