@@ -48,8 +48,10 @@ export default {
   },
   
   beforeUnmount() {
-    // Clean up WebSocket connection when app is unmounted
-    this.$store.dispatch('disconnectWebSocket');
+    // Avoid disconnect on Vite HMR reloads (causes reconnect storms in dev/Docker)
+    if (import.meta.env.PROD) {
+      this.$store.dispatch('disconnectWebSocket');
+    }
   }
 };
 </script>

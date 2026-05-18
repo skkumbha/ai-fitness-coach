@@ -15,7 +15,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to print colored output
 print_status() {
     echo -e "${BLUE}$1${NC}"
 }
@@ -55,8 +54,6 @@ print_success "✅ Development Docker image built successfully!"
 # Step 4: Run the container
 print_status "🐳 Starting development container..."
 docker run -d -p $LOCAL_PORT:3000 \
-  -e VITE_WS_HOST=localhost:8080 \
-  -e VITE_WS_PATH=/ws \
   --name $CONTAINER_NAME $IMAGE_NAME
 
 if [ $? -ne 0 ]; then
@@ -90,8 +87,8 @@ echo "   Stop container: docker stop $CONTAINER_NAME"
 echo "   Remove container: docker rm $CONTAINER_NAME"
 echo "   Remove image: docker rmi $IMAGE_NAME"
 echo ""
-print_warning "💡 Note: This is using localhost:8080/api for backend calls"
+print_warning "💡 API: http://localhost:8080/api  |  WebSocket: ws://localhost:8080/ws"
 print_warning "   Make sure your backend is running on port 8080"
 echo ""
 print_success "🚀 Happy coding!"
-print_success "   Hot reloading is enabled - changes will update automatically!" 
+print_success "   Hot reloading is enabled - changes will update automatically!"
