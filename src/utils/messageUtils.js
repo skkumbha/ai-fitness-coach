@@ -34,6 +34,79 @@ export const getMessageText = (message) => {
   return message.text || message.message || message.content || message.body || '';
 };
 
+/**
+ * Parse message timestamps from ISO strings, Unix seconds, or Unix milliseconds.
+ * @param {string|number|Date|null|undefined} timestamp
+ * @returns {Date|null}
+ */
+export const parseMessageTimestamp = (timestamp) => {
+  if (timestamp == null || timestamp === '') {
+    return null;
+  }
+
+  if (timestamp instanceof Date) {
+    return Number.isNaN(timestamp.getTime()) ? null : timestamp;
+  }
+
+  if (typeof timestamp === 'number') {
+    const ms = timestamp < 1e12 ? timestamp * 1000 : timestamp;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const str = String(timestamp).trim();
+  if (!str) {
+    return null;
+  }
+
+  if (/^\d+$/.test(str)) {
+    const n = Number(str);
+    const ms = n < 1e12 ? n * 1000 : n;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const date = new Date(str);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/**
+ * Format a timestamp for chat bubbles (e.g. "02:30 PM", "06:45 AM").
+ * @param {string|number|Date|null|undefined} timestamp
+ * @returns {string}
+ */
+export const formatMessageTime = (timestamp) => {
+  const date = parseMessageTimestamp(timestamp);
+  if (!date) {
+    return '';
+  }
+
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+/**
+ * Format display time for a chat message, with fallback to id embedded timestamp.
+ * @param {{ timestamp?: string|number, id?: string }} message
+ * @returns {string}
+ */
+export const formatMessageTimestamp = (message) => {
+  if (!message) {
+    return '';
+  }
+
+  const fromField = formatMessageTime(message.timestamp);
+  if (fromField) {
+    return fromField;
+  }
+
+  const fromId = extractTimestampFromIdempotencyKey(message.id);
+  return formatMessageTime(fromId);
+};
+
 export const getMessageSender = (message) => {
   if (!message) return 'assistant';
   if (message.sender) {
