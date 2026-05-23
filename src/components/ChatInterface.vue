@@ -46,7 +46,7 @@
             v-html="formatMessage(message.text)"
           />
           <div class="message-timestamp">
-            {{ formatTimestamp(message.timestamp) }}
+            {{ formatMessageTimestamp(message) }}
           </div>
         </div>
       </div>
@@ -90,7 +90,7 @@
 </template>
 
 <script>
-import { isStatusAckMessage } from '@/utils/messageUtils';
+import { formatMessageTimestamp as formatChatMessageTime, isStatusAckMessage } from '@/utils/messageUtils';
 
 export default {
   name: 'ChatInterface',
@@ -157,6 +157,10 @@ export default {
     });
   },
   methods: {
+    formatMessageTimestamp(message) {
+      return formatChatMessageTime(message);
+    },
+
     sendMessage() {
       if (!this.canSendMessage || this.loading) return;
       
@@ -219,21 +223,6 @@ export default {
           setTimeout(run, 300);
         });
       });
-    },
-    
-    formatTimestamp(timestamp) {
-      if (!timestamp) return '';
-      
-      try {
-        const date = new Date(timestamp);
-        if (isNaN(date.getTime())) {
-          return ''; // Return empty string for invalid dates
-        }
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } catch (error) {
-        console.warn('Invalid timestamp:', timestamp);
-        return '';
-      }
     },
     
     formatMessage(text) {
@@ -526,13 +515,19 @@ export default {
 
 .message-timestamp {
   font-size: 0.6875rem;
-  color: rgba(17, 27, 33, 0.5);
+  color: rgba(17, 27, 33, 0.55);
   text-align: right;
   margin-top: 4px;
+  line-height: 1.2;
+  min-height: 0.875rem;
 }
 
 .user-message .message-timestamp {
-  color: rgba(17, 27, 33, 0.45);
+  color: rgba(17, 27, 33, 0.5);
+}
+
+.message-acknowledged .message-timestamp {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .error-text {

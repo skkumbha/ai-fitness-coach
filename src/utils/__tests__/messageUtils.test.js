@@ -4,7 +4,10 @@ import {
   isValidIdempotencyKey, 
   isValidMessageId, 
   extractTimestampFromIdempotencyKey, 
-  extractTimestampFromId 
+  extractTimestampFromId,
+  parseMessageTimestamp,
+  formatMessageTime,
+  formatMessageTimestamp
 } from '../messageUtils';
 
 describe('Message Utils', () => {
@@ -115,6 +118,59 @@ describe('Message Utils', () => {
       expect(extractTimestampFromId('invalid')).toBe(null);
       expect(extractTimestampFromId('')).toBe(null);
       expect(extractTimestampFromId(null)).toBe(null);
+    });
+  });
+
+  describe('parseMessageTimestamp', () => {
+    test('should parse ISO-8601 strings', () => {
+      const date = parseMessageTimestamp('2024-06-15T14:30:00.000Z');
+      expect(date).toBeInstanceOf(Date);
+      expect(date.getTime()).toBe(Date.parse('2024-06-15T14:30:00.000Z'));
+    });
+
+    test('should parse Unix seconds from backend', () => {
+      const seconds = 1715989234;
+      const date = parseMessageTimestamp(String(seconds));
+      expect(date).toBeInstanceOf(Date);
+      expect(date.getTime()).toBe(seconds * 1000);
+    });
+
+    test('should parse Unix milliseconds', () => {
+      const ms = 1715989234000;
+      const date = parseMessageTimestamp(ms);
+      expect(date.getTime()).toBe(ms);
+    });
+  });
+
+  describe('formatMessageTime', () => {
+    test('should format as 12-hour clock with AM/PM', () => {
+      const formatted = formatMessageTime('2024-06-15T14:30:00.000Z');
+      expect(formatted).toMatch(/^\d{2}:\d{2} (AM|PM)$/);
+    });
+
+    test('should format Unix seconds from backend', () => {
+      const date = new Date(2024, 5, 15, 14, 30, 0);
+      const seconds = Math.floor(date.getTime() / 1000);
+      const formatted = formatMessageTime(String(seconds));
+      expect(formatted).toMatch(/02:30 PM|02:30 pm/i);
+    });
+  });
+
+  describe('formatMessageTimestamp', () => {
+    test('should use message timestamp when present', () => {
+      const formatted = formatMessageTimestamp({
+        id: 'msg_1_abc',
+        timestamp: '2024-06-15T06:45:00.000Z'
+      });
+      expect(formatted).toMatch(/^\d{2}:\d{2} (AM|PM)$/);
+    });
+
+    test('should fall back to id embedded timestamp', () => {
+      const ts = new Date(2024, 5, 15, 6, 45, 0).getTime();
+      const formatted = formatMessageTimestamp({
+        id: `msg_${ts}_abc123def`
+      });
+      expect(formatted).toMatch(/06:45 AM|6:45 AM/i);
     });
   });
 
