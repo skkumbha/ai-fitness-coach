@@ -23,11 +23,15 @@
       </div>
     </div>
     
-            <div class="chat-messages" ref="chatMessages">
+            <div class="chat-messages" ref="chatMessages" @scroll.passive="onMessagesScroll">
+      <div v-if="currentDayLabel" class="sticky-day-header" aria-hidden="true">
+        <span class="sticky-day-pill">{{ currentDayLabel }}</span>
+      </div>
       <div 
         v-for="message in displayMessages" 
         :key="message.id" 
         class="message"
+        :data-message-id="message.id"
         :class="[
           message.sender === 'user' ? 'user-message' : 'assistant-message',
           message.status ? `message-${message.status}` : ''
@@ -90,7 +94,7 @@
 </template>
 
 <script>
-import { formatMessageTimestamp as formatChatMessageTime, isStatusAckMessage } from '@/utils/messageUtils';
+import { formatMessageDayLabel, formatMessageTimestamp as formatChatMessageTime, isStatusAckMessage } from '@/utils/messageUtils';
 
 export default {
   name: 'ChatInterface',
@@ -107,6 +111,8 @@ export default {
   data() {
     return {
       newMessage: '',
+      currentDayLabel: '',
+      _scrollRaf: null,
       suggestionChips: [
         'Help me create a workout plan',
         'What should I eat after a workout?',
@@ -137,6 +143,7 @@ export default {
     messages: {
       handler() {
         this.scheduleScroll();
+        this.$nextTick(() => this.updateStickyDayHeader());
       },
       deep: true
     },
@@ -150,6 +157,7 @@ export default {
   mounted() {
     this.resetTextareaHeight();
     this.scheduleScroll();
+    this.updateStickyDayHeader();
     this.$nextTick(() => {
       if (this.$refs.messageInput) {
         this.$refs.messageInput.focus();
@@ -159,6 +167,44 @@ export default {
   methods: {
     formatMessageTimestamp(message) {
       return formatChatMessageTime(message);
+    },
+
+    onMessagesScroll() {
+      if (this._scrollRaf) return;
+      this._scrollRaf = requestAnimationFrame(() => {
+        this._scrollRaf = null;
+        this.updateStickyDayHeader();
+      });
+    },
+
+    updateStickyDayHeader() {
+      const container = this.$refs.chatMessages;
+      if (!container) return;
+
+      const messageEls = container.querySelectorAll('.message[data-message-id]');
+      if (!messageEls || messageEls.length === 0) {
+        this.currentDayLabel = '';
+        return;
+      }
+
+      const containerTop = container.getBoundingClientRect().top;
+      let activeEl = null;
+
+      for (const el of messageEls) {
+        const r = el.getBoundingClientRect();
+        if (r.bottom > containerTop + 8) {
+          activeEl = el;
+          break;
+        }
+      }
+
+      if (!activeEl) {
+        activeEl = messageEls[messageEls.length - 1];
+      }
+
+      const id = activeEl.getAttribute('data-message-id');
+      const msg = this.displayMessages.find(m => String(m.id) === String(id));
+      this.currentDayLabel = formatMessageDayLabel(msg);
     },
 
     sendMessage() {
@@ -528,6 +574,26 @@ export default {
 
 .message-acknowledged .message-timestamp {
   color: rgba(255, 255, 255, 0.8);
+}
+
+.sticky-day-header {
+  position: sticky;
+  top: 10px;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  margin: 10px 0;
+}
+
+.sticky-day-pill {
+  background: rgba(17, 27, 33, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.2px;
+  backdrop-filter: blur(6px);
 }
 
 .error-text {
