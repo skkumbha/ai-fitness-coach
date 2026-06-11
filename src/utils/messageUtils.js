@@ -217,6 +217,45 @@ export const extractTimestampFromId = (messageId) => {
   return extractTimestampFromIdempotencyKey(messageId);
 };
 
+const toLocalYmd = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Format a message's day label for the sticky header.
+ * - Today / Yesterday (local)
+ * - Otherwise: "Wed, May 20"
+ * @param {{ timestamp?: string|number|Date|null, id?: string }|null} message
+ * @returns {string}
+ */
+export const formatMessageDayLabel = (message) => {
+  if (!message) return '';
+
+  let date = parseMessageTimestamp(message.timestamp);
+  if (!date) {
+    const fromId = extractTimestampFromIdempotencyKey(message.id);
+    date = parseMessageTimestamp(fromId);
+  }
+  if (!date) return '';
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const key = toLocalYmd(date);
+  if (key === toLocalYmd(today)) return 'Today';
+  if (key === toLocalYmd(yesterday)) return 'Yesterday';
+
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
 /**
  * Demo function to showcase idempotency functionality
  * @returns {Object} - Demo data showing how idempotency works
