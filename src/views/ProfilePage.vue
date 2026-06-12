@@ -228,6 +228,8 @@
               </div>
               
               <div class="account-settings">
+                <TelegramLinkCard />
+
                 <div class="settings-card">
                   <h3 class="settings-title">Change Password</h3>
                   <p class="settings-desc">Update your password to keep your account secure</p>
@@ -351,6 +353,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import ErrorMessage from '@/components/ErrorMessage.vue';
 import ProfileForm from '@/components/ProfileForm.vue';
 import GoalTracker from '@/components/GoalTracker.vue';
+import TelegramLinkCard from '@/components/TelegramLinkCard.vue';
 
 export default {
   name: 'ProfilePage',
@@ -358,7 +361,8 @@ export default {
     LoadingSpinner,
     ErrorMessage,
     ProfileForm,
-    GoalTracker
+    GoalTracker,
+    TelegramLinkCard
   },
   data() {
     return {
