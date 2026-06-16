@@ -200,7 +200,8 @@ export default {
       this.errorMessage = '';
       
       try {
-        await this.$store.dispatch('submitOnboarding', this.formData);
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await this.$store.dispatch('submitOnboarding', { ...this.formData, timezone });
         
         // Wait for the next tick to ensure store updates are processed
         await this.$nextTick();
