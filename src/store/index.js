@@ -8,7 +8,7 @@ import {
 import { 
   getWorkoutHistory, 
   getWorkoutById,
-  trackWorkoutCompletion 
+  checkInWorkout
 } from '@/api/workouts';
 import { 
   getMealSuggestions 
@@ -17,8 +17,23 @@ import {
   getChatHistory,
   sendChatMessage 
 } from '@/api/chat';
-import { generateMessageId, isStatusAckMessage } from '@/utils/messageUtils';
+import { generateMessageId, isStatusAckMessage, extractCoachUserMessage } from '@/utils/messageUtils';
 import ChatWebSocket from '@/services/websocket';
+
+function normalizeChatMessage(message) {
+  const sender = message.sender || message.role || 'assistant';
+  const rawText = message.text || message.message || message.content || '';
+  const text = sender === 'assistant' ? extractCoachUserMessage(rawText) : rawText;
+  return {
+    id: message.id || generateMessageId('msg'),
+    sender,
+    text: text || 'No message content',
+    timestamp: message.timestamp || new Date().toISOString(),
+    status: message.status || 'received',
+    ...message,
+    text: text || 'No message content'
+  };
+}
 
 export default createStore({
   state: {
@@ -100,30 +115,21 @@ export default createStore({
     
     // Chat mutations
     setChatHistory(state, messages) {
-      state.chatHistory = (messages || []).filter(m => {
-        const text = m?.text || m?.message || '';
-        return !isStatusAckMessage(text);
-      });
+      state.chatHistory = (messages || [])
+        .map(m => normalizeChatMessage(m))
+        .filter(m => !isStatusAckMessage(m.text));
     },
     addChatMessage(state, message) {
       if (!message || typeof message !== 'object') {
         return;
       }
 
-      const text = message.text || message.message || '';
+      const validatedMessage = normalizeChatMessage(message);
+      const text = validatedMessage.text || '';
       if (isStatusAckMessage(text)) {
         state.typingIndicators = { ...state.typingIndicators, assistant: true };
         return;
       }
-
-      const validatedMessage = {
-        id: message.id || generateMessageId('msg'),
-        sender: message.sender || 'assistant',
-        text: text || 'No message content',
-        timestamp: message.timestamp || new Date().toISOString(),
-        status: message.status || 'received',
-        ...message
-      };
 
       const existingMessage = state.chatHistory.find(m =>
         m.id === validatedMessage.id ||
@@ -273,15 +279,18 @@ export default createStore({
       }
     },
     
-    async submitOnboarding({ commit }, onboardingData) {
+    async submitOnboarding({ commit, dispatch }, onboardingData) {
       commit('setLoading', true);
       commit('clearError');
       
       try {
-        const user = await completeOnboarding(onboardingData);
-        commit('setUser', user);
+        const payload = {
+          ...onboardingData,
+          weeklyWorkOuts: onboardingData.weeklyWorkOuts ?? onboardingData.weeklyWorkouts
+        };
+        await completeOnboarding(payload);
+        await dispatch('fetchUserProfile');
         commit('setOnboardingCompleted', true);
-        return user;
       } catch (error) {
         commit('setError', error.message || 'Failed to complete onboarding');
         throw error;
@@ -305,14 +314,20 @@ export default createStore({
       }
     },
     
-    async completeWorkout({ commit }, workoutData) {
+    async completeWorkout({ commit }, workoutData = {}) {
       commit('setLoading', true);
       
       try {
-        const workout = await trackWorkoutCompletion(workoutData);
-        commit('addWorkout', workout);
+        const response = await checkInWorkout({
+          durationMin: workoutData.durationMin ?? workoutData.duration,
+          notes: workoutData.notes
+        });
+        if (response.completedWorkout) {
+          commit('addWorkout', response.completedWorkout);
+        }
+        return response;
       } catch (error) {
-        commit('setError', error.message || 'Failed to track workout');
+        commit('setError', error.message || 'Failed to check in workout');
         throw error;
       } finally {
         commit('setLoading', false);

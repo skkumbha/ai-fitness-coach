@@ -19,90 +19,59 @@
         </div>
       </div>
       
-      <div class="dashboard-stats">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-fire"></i>
-          </div>
-          <div class="stat-details">
-            <h3 class="stat-value">{{ stats.calories || 0 }}</h3>
-            <p class="stat-label">Calories Burned</p>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-dumbbell"></i>
-          </div>
-          <div class="stat-details">
-            <h3 class="stat-value">{{ stats.workouts || 0 }}</h3>
-            <p class="stat-label">Workouts Completed</p>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="stat-details">
-            <h3 class="stat-value">{{ stats.minutes || 0 }}</h3>
-            <p class="stat-label">Active Minutes</p>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-trophy"></i>
-          </div>
-          <div class="stat-details">
-            <h3 class="stat-value">{{ stats.streak || 0 }}</h3>
-            <p class="stat-label">Day Streak</p>
-          </div>
-        </div>
-      </div>
-      
       <div class="dashboard-sections">
-        <!-- Progress Tracking -->
         <div class="section-col">
           <div class="section-card progress-section">
             <div class="section-header">
               <h2 class="section-title">Your Progress</h2>
-              <div class="section-actions">
-                <button @click="openGoalModal" class="btn btn-sm btn-outline">
-                  <i class="fas fa-plus"></i> Set Goal
-                </button>
-              </div>
             </div>
             
-            <div v-if="goals.length > 0" class="goals-list">
-              <GoalTracker 
-                v-for="goal in goals" 
-                :key="goal.id"
-                :goal="goal"
-                @update="openGoalModal(goal)"
-                @complete="completeGoal(goal.id)"
-              />
+            <div v-if="hasProfileGoals" class="profile-goals">
+              <div v-if="personalDetails.primaryGoal" class="goal-row">
+                <span class="goal-label">Primary goal</span>
+                <span class="goal-value">{{ personalDetails.primaryGoal }}</span>
+              </div>
+              <div v-if="personalDetails.fitnessLevel" class="goal-row">
+                <span class="goal-label">Fitness level</span>
+                <span class="goal-value">{{ personalDetails.fitnessLevel }}</span>
+              </div>
+              <div v-if="personalDetails.weight" class="goal-row">
+                <span class="goal-label">Current weight</span>
+                <span class="goal-value">{{ personalDetails.weight }} kg</span>
+              </div>
+              <div v-if="personalDetails.targetWeight" class="goal-row">
+                <span class="goal-label">Target weight</span>
+                <span class="goal-value">{{ personalDetails.targetWeight }} kg</span>
+              </div>
+              <div v-if="personalDetails.weeklyWorkOuts" class="goal-row">
+                <span class="goal-label">Weekly workouts</span>
+                <span class="goal-value">{{ personalDetails.weeklyWorkOuts }} per week</span>
+              </div>
+              <div v-if="personalDetails.height" class="goal-row">
+                <span class="goal-label">Height</span>
+                <span class="goal-value">{{ personalDetails.height }} cm</span>
+              </div>
             </div>
             
             <div v-else class="empty-state">
               <div class="empty-icon">
                 <i class="fas fa-bullseye"></i>
               </div>
-              <p class="empty-text">You haven't set any fitness goals yet.</p>
-              <button @click="openGoalModal" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Set Your First Goal
-              </button>
+              <p class="empty-text">Complete your profile to see your goals.</p>
+              <router-link to="/profile" class="btn btn-primary">
+                <i class="fas fa-user"></i> Go to Profile
+              </router-link>
             </div>
             
             <ProgressChart 
               title="Weekly Activity"
-              endpoint="workout-activity"
               type="line"
+              :chart-data="weeklyChartData"
+              empty-message="No workouts logged yet."
             />
           </div>
         </div>
         
-        <!-- Upcoming Workouts & Recommendations -->
         <div class="section-col">
           <div class="section-card workouts-section">
             <div class="section-header">
@@ -130,36 +99,25 @@
               <div class="empty-icon">
                 <i class="fas fa-calendar-check"></i>
               </div>
-              <p class="empty-text">No workout planned for today.</p>
-              <button @click="requestWorkout" class="btn btn-primary">
-                <i class="fas fa-dumbbell"></i> Generate Workout
+              <p class="empty-text">
+                Your workout plan will appear at your preferred reminder time, or ask your coach in chat.
+              </p>
+              <button @click="$router.push('/chat')" class="btn btn-primary">
+                <i class="fas fa-comment-dots"></i> Talk to Coach
               </button>
             </div>
             
             <div class="section-header mt-4">
-              <h2 class="section-title">Nutrition Suggestions</h2>
-              <div class="section-actions">
-                <router-link to="/nutrition" class="btn btn-sm btn-outline">
-                  <i class="fas fa-utensils"></i> More Options
-                </router-link>
-              </div>
+              <h2 class="section-title">Nutrition</h2>
             </div>
             
-            <div v-if="mealSuggestions.length > 0" class="meal-suggestions">
-              <MealCard 
-                :meal="mealSuggestions[0]" 
-                @save="saveMeal" 
-                @log="logMeal"
-              />
-            </div>
-            
-            <div v-else class="empty-state">
+            <div class="nutrition-cta">
               <div class="empty-icon">
                 <i class="fas fa-utensils"></i>
               </div>
-              <p class="empty-text">No meal suggestions available.</p>
-              <button @click="refreshMeals" class="btn btn-primary">
-                <i class="fas fa-sync-alt"></i> Get Suggestions
+              <p class="empty-text">Get personalized meal guidance from your coach.</p>
+              <button @click="$router.push('/chat')" class="btn btn-primary">
+                <i class="fas fa-comment-dots"></i> Ask about nutrition
               </button>
             </div>
           </div>
@@ -172,38 +130,42 @@
 <script>
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import WorkoutCard from '@/components/WorkoutCard.vue';
-import MealCard from '@/components/MealCard.vue';
-import GoalTracker from '@/components/GoalTracker.vue';
 import ProgressChart from '@/components/ProgressChart.vue';
+import { getTodaysWorkout } from '@/api/workouts';
+import { mapTodayWorkoutToCard, aggregateActivityFromHistory } from '@/utils/workoutMapper';
 
 export default {
   name: 'DashboardPage',
   components: {
     LoadingSpinner,
     WorkoutCard,
-    MealCard,
-    GoalTracker,
     ProgressChart
   },
   data() {
     return {
       loading: true,
       refreshing: false,
-      stats: {
-        calories: 0,
-        workouts: 0,
-        minutes: 0,
-        streak: 0
-      },
       todaysWorkout: null,
-      mealSuggestions: [],
-      goals: []
+      workoutHistory: []
     };
   },
   computed: {
     userFirstName() {
       const user = this.$store.getters.currentUser;
       return user?.firstName || 'User';
+    },
+
+    personalDetails() {
+      return this.$store.getters.currentUser?.personalDetails || {};
+    },
+
+    hasProfileGoals() {
+      const pd = this.personalDetails;
+      return !!(pd.primaryGoal || pd.fitnessLevel || pd.targetWeight || pd.weeklyWorkOuts);
+    },
+
+    weeklyChartData() {
+      return aggregateActivityFromHistory(this.workoutHistory, 'week');
     },
     
     welcomeMessage() {
@@ -220,9 +182,9 @@ export default {
       }
       
       const dayOfWeek = now.getDay();
-      if (dayOfWeek === 1) { // Monday
+      if (dayOfWeek === 1) {
         message += ' Let\'s set the tone for a great week!';
-      } else if (dayOfWeek === 5) { // Friday
+      } else if (dayOfWeek === 5) {
         message += ' Ready for an active weekend?';
       }
       
@@ -237,22 +199,11 @@ export default {
       this.loading = true;
       
       try {
-        // Fetch workout history
         await this.$store.dispatch('fetchWorkoutHistory');
-        const workouts = this.$store.getters.workoutHistory;
-        
-        // Get today's workout if exists
-        this.todaysWorkout = this.getTodaysWorkout(workouts);
-        
-        // Calculate stats
-        this.calculateStats(workouts);
-        
-        // Fetch meal suggestions
-        await this.$store.dispatch('fetchMealSuggestions');
-        this.mealSuggestions = this.$store.getters.mealSuggestions;
-        
-        // Fetch goals (mock data for now)
-        this.fetchGoals();
+        this.workoutHistory = this.$store.getters.workoutHistory || [];
+
+        const todayResponse = await getTodaysWorkout();
+        this.todaysWorkout = mapTodayWorkoutToCard(todayResponse);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -266,169 +217,26 @@ export default {
       this.refreshing = false;
     },
     
-    getTodaysWorkout(workouts) {
-      // Check if any workout is scheduled for today
-      const today = new Date().toISOString().split('T')[0];
-      return workouts.find(w => !w.completed && w.scheduledFor?.startsWith(today)) || null;
-    },
-    
-    calculateStats(workouts) {
-      // This would be replaced with actual API data
-      this.stats = {
-        calories: workouts.reduce((sum, w) => sum + (w.calories || 0), 0),
-        workouts: workouts.filter(w => w.completed).length,
-        minutes: workouts.reduce((sum, w) => sum + (w.duration || 0), 0),
-        streak: this.calculateStreak(workouts)
-      };
-    },
-    
-    calculateStreak(workouts) {
-      // Basic streak calculation
-      // In a real app, this would be more sophisticated
-      return 5; // Mock data
-    },
-    
-    fetchGoals() {
-      // This would be replaced with an API call
-      // Mock data for now
-      this.goals = [
-        {
-          id: '1',
-          title: 'Weight Loss Goal',
-          description: 'Lose weight through consistent exercise and nutrition',
-          startDate: '2023-06-01',
-          endDate: '2023-09-01',
-          startValue: 185,
-          currentValue: 175,
-          targetValue: 170,
-          unit: 'lbs',
-          isReduceGoal: true,
-          metrics: [
-            { label: 'Starting', value: '185 lbs' },
-            { label: 'Current', value: '175 lbs' },
-            { label: 'Target', value: '170 lbs' }
-          ]
-        },
-        {
-          id: '2',
-          title: 'Strength Training',
-          description: 'Increase bench press max weight',
-          startDate: '2023-06-01',
-          endDate: '2023-09-01',
-          startValue: 135,
-          currentValue: 155,
-          targetValue: 180,
-          unit: 'lbs',
-          metrics: [
-            { label: 'Starting', value: '135 lbs' },
-            { label: 'Current', value: '155 lbs' },
-            { label: 'Target', value: '180 lbs' }
-          ]
-        }
-      ];
-    },
-    
-    completeWorkout(workoutId) {
-      // This is just UI update for demo
-      if (this.todaysWorkout && this.todaysWorkout.id === workoutId) {
-        this.todaysWorkout = {
-          ...this.todaysWorkout,
-          completed: true,
-          completedAt: new Date().toISOString()
-        };
-        
-        // Update stats
-        this.stats.workouts += 1;
-        this.stats.calories += this.todaysWorkout.calories || 0;
-        this.stats.minutes += this.todaysWorkout.duration || 0;
+    async completeWorkout(workoutId) {
+      if (!this.todaysWorkout || this.todaysWorkout.id !== workoutId) {
+        return;
+      }
+
+      try {
+        const response = await this.$store.dispatch('completeWorkout', {
+          durationMin: this.todaysWorkout.duration,
+          notes: null
+        });
+        this.todaysWorkout = mapTodayWorkoutToCard(response);
+        await this.$store.dispatch('fetchWorkoutHistory');
+        this.workoutHistory = this.$store.getters.workoutHistory || [];
+      } catch (error) {
+        console.error('Error checking in workout:', error);
       }
     },
     
-    viewWorkoutDetails(workoutId) {
-      // Navigate to workout details
-      this.$router.push(`/workouts/${workoutId}`);
-    },
-    
-    saveMeal(mealId) {
-      // Just UI update for demo
-      this.mealSuggestions = this.mealSuggestions.map(meal => {
-        if (meal.id === mealId) {
-          return { ...meal, saved: true };
-        }
-        return meal;
-      });
-    },
-    
-    logMeal(mealId) {
-      // Just UI update for demo
-      this.mealSuggestions = this.mealSuggestions.map(meal => {
-        if (meal.id === mealId) {
-          return { ...meal, logged: true };
-        }
-        return meal;
-      });
-    },
-    
-    openGoalModal(goal = null) {
-      // Would show a modal to add/edit goal
-      alert(goal ? 'Edit goal: ' + goal.title : 'Create new goal');
-    },
-    
-    completeGoal(goalId) {
-      // Mark goal as completed
-      this.goals = this.goals.map(goal => {
-        if (goal.id === goalId) {
-          return { ...goal, completed: true, completedAt: new Date().toISOString() };
-        }
-        return goal;
-      });
-    },
-    
-    requestWorkout() {
-      // Would normally open a modal or navigate to create workout page
-      // For demo, just create a workout
-      this.todaysWorkout = {
-        id: 'new-workout-' + Date.now(),
-        title: 'Quick Full Body Workout',
-        description: 'A balanced full body workout focusing on major muscle groups.',
-        category: 'Strength',
-        duration: 45,
-        calories: 350,
-        scheduledFor: new Date().toISOString(),
-        completed: false,
-        exercises: [
-          { name: 'Push-ups', sets: 3, reps: 12 },
-          { name: 'Squats', sets: 3, reps: 15 },
-          { name: 'Planks', sets: 3, reps: '30 sec' },
-          { name: 'Lunges', sets: 3, reps: 10 }
-        ]
-      };
-    },
-    
-    refreshMeals() {
-      // For demo, just create a meal suggestion
-      this.mealSuggestions = [
-        {
-          id: 'meal-' + Date.now(),
-          title: 'High-Protein Chicken Bowl',
-          type: 'Lunch',
-          description: 'A nutrient-rich bowl with lean protein, complex carbs, and healthy fats.',
-          calories: 520,
-          protein: 38,
-          carbs: 45,
-          fat: 18,
-          ingredients: [
-            'Grilled chicken breast (6oz)',
-            'Brown rice (1 cup)',
-            'Roasted vegetables',
-            'Avocado (1/4)',
-            'Olive oil (1 tbsp)',
-            'Lemon juice',
-            'Herbs and spices'
-          ],
-          tags: ['High-Protein', 'Low-Carb', 'Meal-Prep Friendly']
-        }
-      ];
+    viewWorkoutDetails() {
+      this.$router.push('/workouts');
     }
   }
 };
@@ -467,58 +275,6 @@ export default {
 .quick-actions {
   display: flex;
   gap: var(--spacing-sm);
-}
-
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-}
-
-.stat-card {
-  background-color: var(--card-background);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-md);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  align-items: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: rgba(76,175,80,0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: var(--spacing-md);
-  color: var(--primary-color);
-  font-size: 1.25rem;
-}
-
-.stat-details {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-color);
-}
-
-.stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin: 0;
 }
 
 .dashboard-sections {
@@ -560,12 +316,44 @@ export default {
   gap: var(--spacing-xs);
 }
 
-.goals-list {
+.profile-goals {
   padding: var(--spacing-md);
 }
 
-.today-workout, .meal-suggestions {
+.goal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.goal-row:last-child {
+  border-bottom: none;
+}
+
+.goal-label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.goal-value {
+  font-weight: 500;
+  color: var(--text-color);
+  text-align: right;
+}
+
+.today-workout {
   padding: var(--spacing-md);
+}
+
+.nutrition-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  text-align: center;
 }
 
 .empty-state {
@@ -618,12 +406,6 @@ export default {
   
   .quick-actions button {
     flex: 1;
-  }
-}
-
-@media (max-width: 576px) {
-  .dashboard-stats {
-    grid-template-columns: 1fr;
   }
 }
 </style>

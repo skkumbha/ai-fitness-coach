@@ -2,7 +2,7 @@
   <div class="progress-chart">
     <div class="chart-header">
       <h3 class="chart-title">{{ title }}</h3>
-      <div class="chart-period-selector">
+      <div v-if="!useExternalData" class="chart-period-selector">
         <button 
           v-for="period in periods" 
           :key="period.value" 
@@ -29,7 +29,7 @@
       </div>
       <div v-if="!loading && !error && !hasData" class="chart-empty">
         <i class="fas fa-chart-line"></i>
-        <p>No data available for the selected period.</p>
+        <p>{{ emptyMessage }}</p>
       </div>
     </div>
   </div>
@@ -58,7 +58,15 @@ export default {
     },
     endpoint: {
       type: String,
-      required: true
+      default: ''
+    },
+    chartData: {
+      type: Object,
+      default: null
+    },
+    emptyMessage: {
+      type: String,
+      default: 'No data available for the selected period.'
     }
   },
   data() {
@@ -66,7 +74,7 @@ export default {
       loading: false,
       error: null,
       chart: null,
-      chartData: null,
+      resolvedChartData: null,
       selectedPeriod: 'week',
       periods: [
         { label: 'Week', value: 'week' },
@@ -77,61 +85,73 @@ export default {
     };
   },
   computed: {
+    useExternalData() {
+      return !!this.chartData;
+    },
     hasData() {
-      return !!this.chartData && this.chartData.labels.length > 0;
+      if (!this.resolvedChartData) return false;
+      return this.resolvedChartData.labels.length > 0
+        && (this.resolvedChartData.hasAnyData !== false
+          || this.resolvedChartData.data.some((v) => v > 0));
     }
   },
   watch: {
     selectedPeriod() {
-      this.fetchChartData();
+      if (!this.useExternalData) {
+        this.fetchChartData();
+      }
+    },
+    chartData: {
+      deep: true,
+      handler() {
+        if (this.useExternalData) {
+          this.applyExternalChartData();
+        }
+      }
     }
   },
   methods: {
     async fetchChartData() {
+      if (this.useExternalData) {
+        this.applyExternalChartData();
+        return;
+      }
+
       this.loading = true;
       this.error = null;
-      
-      try {
-        // For demonstration, we would call an API endpoint here
-        // const response = await this.$store.dispatch('fetchChartData', {
-        //   endpoint: this.endpoint,
-        //   period: this.selectedPeriod
-        // });
-        // this.chartData = response;
-        
-        // Simulating API call - this would be replaced with actual API data
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // This is sample data - would be replaced with actual data from API
-        this.chartData = this.generateSampleData();
-        
-        this.renderChart();
-      } catch (error) {
-        this.error = error.message || 'Failed to load chart data.';
-      } finally {
-        this.loading = false;
-      }
+      this.resolvedChartData = null;
+      this.loading = false;
+    },
+
+    applyExternalChartData() {
+      this.error = null;
+      this.resolvedChartData = this.chartData;
+      this.$nextTick(() => this.renderChart());
     },
     
     renderChart() {
-      if (!this.chartData) return;
+      if (!this.resolvedChartData || !this.hasData) {
+        if (this.chart) {
+          this.chart.destroy();
+          this.chart = null;
+        }
+        return;
+      }
       
       const ctx = this.$refs.chartCanvas.getContext('2d');
       
-      // Destroy previous chart instance if it exists
       if (this.chart) {
         this.chart.destroy();
       }
       
-      // Create new chart
       this.chart = new Chart(ctx, {
         type: this.type,
         data: {
-          labels: this.chartData.labels,
+          labels: this.resolvedChartData.labels,
           datasets: [
             {
-              label: this.chartData.label,
-              data: this.chartData.data,
+              label: this.resolvedChartData.label || 'Progress',
+              data: this.resolvedChartData.data,
               backgroundColor: 'rgba(76, 175, 80, 0.2)',
               borderColor: 'rgba(76, 175, 80, 1)',
               borderWidth: 2,
@@ -175,57 +195,6 @@ export default {
           }
         }
       });
-    },
-    
-    // This method is for demonstration only and would be removed in production
-    generateSampleData() {
-      const labels = [];
-      const data = [];
-      let days = 7;
-      
-      switch (this.selectedPeriod) {
-        case 'week':
-          days = 7;
-          for (let i = 0; i < days; i++) {
-            const date = new Date();
-            date.setDate(date.getDate() - (days - 1 - i));
-            labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
-            data.push(Math.floor(Math.random() * 100));
-          }
-          break;
-        case 'month':
-          days = 30;
-          for (let i = 0; i < days; i += 3) {
-            const date = new Date();
-            date.setDate(date.getDate() - (days - 1 - i));
-            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-            data.push(Math.floor(Math.random() * 100));
-          }
-          break;
-        case 'quarter':
-          days = 90;
-          for (let i = 0; i < days; i += 7) {
-            const date = new Date();
-            date.setDate(date.getDate() - (days - 1 - i));
-            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-            data.push(Math.floor(Math.random() * 100));
-          }
-          break;
-        case 'year':
-          for (let i = 0; i < 12; i++) {
-            const date = new Date();
-            date.setMonth(date.getMonth() - (11 - i));
-            labels.push(date.toLocaleDateString('en-US', { month: 'short' }));
-            data.push(Math.floor(Math.random() * 100));
-          }
-          break;
-      }
-      
-      return {
-        labels,
-        data,
-        label: 'Progress'
-      };
     }
   },
   mounted() {

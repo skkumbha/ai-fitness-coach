@@ -93,7 +93,8 @@ export default {
   },
   computed: {
     userName() {
-      return this.$store.getters.currentUser?.name || 'User';
+      const u = this.$store.getters.currentUser;
+      return u?.firstName || u?.userName || 'User';
     },
     userAvatar() {
       return this.$store.getters.currentUser?.avatar || null;
