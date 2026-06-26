@@ -33,18 +33,68 @@
       
       <div class="form-row">
         <div class="form-group">
-          <label for="height" class="form-label">Height (cm)</label>
-          <input 
-            id="height"
-            :value="localFormData.height"
-            @input="updateField('height', $event.target.value)"
-            type="number"
-            min="0"
-            step="1"
-            class="form-control"
-            placeholder="Height in centimeters"
-            required
-          />
+          <label class="form-label">Height</label>
+          <div class="unit-toggle" role="group" aria-label="Height unit">
+            <button
+              type="button"
+              class="unit-toggle-btn"
+              :class="{ active: heightUnit === 'cm' }"
+              @click="setHeightUnit('cm')"
+            >
+              Centimeters
+            </button>
+            <button
+              type="button"
+              class="unit-toggle-btn"
+              :class="{ active: heightUnit === 'ft' }"
+              @click="setHeightUnit('ft')"
+            >
+              Feet &amp; inches
+            </button>
+          </div>
+
+          <div v-if="heightUnit === 'cm'" class="height-inputs">
+            <input
+              id="height"
+              :value="localFormData.height"
+              @input="updateHeightCm($event.target.value)"
+              type="number"
+              min="0"
+              step="1"
+              class="form-control"
+              placeholder="Height in centimeters"
+              required
+            />
+          </div>
+
+          <div v-else class="height-inputs height-inputs-imperial">
+            <input
+              id="height-feet"
+              :value="heightFeet"
+              @input="updateHeightImperial('feet', $event.target.value)"
+              type="number"
+              min="0"
+              max="8"
+              step="1"
+              class="form-control"
+              placeholder="Feet"
+              aria-label="Height in feet"
+              required
+            />
+            <input
+              id="height-inches"
+              :value="heightInches"
+              @input="updateHeightImperial('inches', $event.target.value)"
+              type="number"
+              min="0"
+              max="11"
+              step="1"
+              class="form-control"
+              placeholder="Inches"
+              aria-label="Height in inches"
+              required
+            />
+          </div>
         </div>
         
         <div class="form-group">
@@ -209,6 +259,27 @@
       </div>
       
       <div class="form-group">
+        <label for="timezone" class="form-label">Your timezone</label>
+        <select
+          id="timezone"
+          :value="localFormData.timezone"
+          @change="updateField('timezone', $event.target.value)"
+          class="form-select"
+          required
+        >
+          <option value="" disabled>Select your timezone</option>
+          <option
+            v-for="tz in timezoneOptions"
+            :key="tz.id"
+            :value="tz.id"
+          >
+            {{ tz.label }}
+          </option>
+        </select>
+        <div class="form-helper-text">Workout reminders and daily plans use your local time.</div>
+      </div>
+      
+      <div class="form-group">
         <label class="form-label">Preferred Time of Day</label>
         <div class="checkbox-group">
           <div v-for="(time, index) in timeSlots" :key="index" class="form-checkbox">
@@ -245,6 +316,9 @@
 </template>
 
 <script>
+import { cmToFeetInches, feetInchesToCm } from '@/utils/heightUtils';
+import { buildTimezoneOptions, detectBrowserTimezone } from '@/utils/timezoneUtils';
+
 export default {
   name: 'OnboardingForm',
   props: {
@@ -260,6 +334,10 @@ export default {
   data() {
     return {
       localFormData: { ...this.formData },
+      heightUnit: this.formData.heightUnit || 'cm',
+      heightFeet: '',
+      heightInches: '',
+      timezoneOptions: buildTimezoneOptions(detectBrowserTimezone()),
       workoutTypes: [
         { value: 'strength', label: 'Strength Training' },
         { value: 'cardio', label: 'Cardio' },
@@ -301,18 +379,24 @@ export default {
       ]
     };
   },
+  created() {
+    this.syncImperialFromCm(this.localFormData.height);
+  },
   watch: {
     // Watch for changes in step to reset form validation
     step() {
       this.localFormData = { ...this.formData };
+      this.heightUnit = this.formData.heightUnit || 'cm';
+      this.syncImperialFromCm(this.localFormData.height);
     },
     
     // Watch for changes in form data from parent (only when not from local changes)
     formData: {
-      handler(newVal, oldVal) {
-        // Only update if the change didn't originate from localFormData
+      handler(newVal) {
         if (JSON.stringify(newVal) !== JSON.stringify(this.localFormData)) {
           this.localFormData = { ...newVal };
+          this.heightUnit = newVal.heightUnit || this.heightUnit;
+          this.syncImperialFromCm(newVal.height);
         }
       },
       deep: true
@@ -320,6 +404,45 @@ export default {
   },
   
   methods: {
+    syncImperialFromCm(heightCm) {
+      const { feet, inches } = cmToFeetInches(heightCm);
+      this.heightFeet = feet;
+      this.heightInches = inches;
+    },
+
+    setHeightUnit(unit) {
+      if (this.heightUnit === unit) {
+        return;
+      }
+
+      this.heightUnit = unit;
+      this.localFormData.heightUnit = unit;
+
+      if (unit === 'ft') {
+        this.syncImperialFromCm(this.localFormData.height);
+      } else if (this.heightFeet !== '' || this.heightInches !== '') {
+        this.localFormData.height = feetInchesToCm(this.heightFeet, this.heightInches);
+      }
+
+      this.handleFormChange();
+    },
+
+    updateHeightCm(value) {
+      this.localFormData.height = value;
+      this.syncImperialFromCm(value);
+      this.handleFormChange();
+    },
+
+    updateHeightImperial(field, value) {
+      if (field === 'feet') {
+        this.heightFeet = value;
+      } else {
+        this.heightInches = value;
+      }
+      this.localFormData.height = feetInchesToCm(this.heightFeet, this.heightInches);
+      this.handleFormChange();
+    },
+
     // Method to handle local form changes and emit to parent
     handleFormChange() {
       this.$emit('update:form', { ...this.localFormData });
@@ -399,6 +522,47 @@ export default {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
+}
+
+.unit-toggle {
+  display: inline-flex;
+  margin-bottom: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.unit-toggle-btn {
+  border: none;
+  background: var(--background-color);
+  color: var(--text-secondary);
+  padding: 0.375rem 0.75rem;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+.unit-toggle-btn + .unit-toggle-btn {
+  border-left: 1px solid var(--border-color);
+}
+
+.unit-toggle-btn.active {
+  background-color: rgba(76, 175, 80, 0.12);
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.height-inputs {
+  width: 100%;
+}
+
+.height-inputs-imperial {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.height-inputs-imperial .form-control {
+  flex: 1;
 }
 
 .checkbox-group {

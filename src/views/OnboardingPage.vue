@@ -88,6 +88,7 @@
 
 <script>
 import OnboardingForm from '@/components/OnboardingForm.vue';
+import { detectBrowserTimezone } from '@/utils/timezoneUtils';
 
 export default {
   name: 'OnboardingPage',
@@ -104,6 +105,7 @@ export default {
         gender: '',
         birthdate: '',
         height: '',
+        heightUnit: 'cm',
         weight: '',
         
         // Fitness Level & Goals
@@ -121,6 +123,7 @@ export default {
         preferredTimes: [],
         availableDays: [],
         sessionDuration: '',
+        timezone: detectBrowserTimezone(),
       },
       steps: [
         {
@@ -167,7 +170,8 @@ export default {
         
         case 3: // Schedule
           return this.formData.availableDays.length > 0 && 
-                 this.formData.sessionDuration;
+                 this.formData.sessionDuration &&
+                 this.formData.timezone;
         
         default:
           return true;

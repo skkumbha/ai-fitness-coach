@@ -1,6 +1,33 @@
 import API from './index';
 
 /**
+ * Get today's planned workout and check-in status
+ * @returns {Promise} - TodayWorkoutResponse from backend
+ */
+export const getTodaysWorkout = async () => {
+  try {
+    const response = await API.get('/workouts/today');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to fetch today\'s workout.');
+  }
+};
+
+/**
+ * Check in a completed workout for today
+ * @param {Object} checkInData - Optional { durationMin, notes }
+ * @returns {Promise} - Updated TodayWorkoutResponse
+ */
+export const checkInWorkout = async (checkInData = {}) => {
+  try {
+    const response = await API.post('/workouts/check-in', checkInData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to check in workout.');
+  }
+};
+
+/**
  * Get the user's workout history
  * @returns {Promise} - Promise with workout history data
  */

@@ -30,8 +30,31 @@ export const isStatusAckMessage = (text) => {
 
 export const getMessageText = (message) => {
   if (!message) return '';
-  if (typeof message === 'string') return message;
-  return message.text || message.message || message.content || message.body || '';
+  if (typeof message === 'string') return extractCoachUserMessage(message);
+  const raw = message.text || message.message || message.content || message.body || '';
+  return extractCoachUserMessage(raw);
+};
+
+/**
+ * If assistant content is raw coach JSON, return userMessage for display.
+ */
+export const extractCoachUserMessage = (text) => {
+  if (!text || typeof text !== 'string') {
+    return text || '';
+  }
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') || !trimmed.includes('"userMessage"')) {
+    return text;
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed.userMessage === 'string' && parsed.userMessage.trim()) {
+      return parsed.userMessage.trim();
+    }
+  } catch {
+    // not JSON — show as-is
+  }
+  return text;
 };
 
 /**
