@@ -165,7 +165,10 @@
             class="form-control"
             placeholder="Optional"
           />
-          <div class="form-helper-text">Leave blank if not targeting weight change</div>
+          <div class="form-helper-text">{{ targetWeightHint }}</div>
+          <div v-if="goalWeightWarning" class="form-warning-text" role="status">
+            {{ goalWeightWarning }}
+          </div>
         </div>
         
         <div class="form-group">
@@ -318,6 +321,10 @@
 <script>
 import { cmToFeetInches, feetInchesToCm } from '@/utils/heightUtils';
 import { buildTimezoneOptions, detectBrowserTimezone } from '@/utils/timezoneUtils';
+import {
+  getGoalWeightConflict,
+  targetWeightHintForGoal
+} from '@/utils/goalWeightConsistency';
 
 export default {
   name: 'OnboardingForm',
@@ -378,6 +385,19 @@ export default {
         { value: 'night', label: 'Night (8pm-11pm)' }
       ]
     };
+  },
+  computed: {
+    targetWeightHint() {
+      return targetWeightHintForGoal(this.localFormData.primaryGoal);
+    },
+    goalWeightWarning() {
+      const conflict = getGoalWeightConflict(
+        this.localFormData.primaryGoal,
+        this.localFormData.weight,
+        this.localFormData.targetWeight
+      );
+      return conflict ? conflict.message : '';
+    }
   },
   created() {
     this.syncImperialFromCm(this.localFormData.height);
@@ -522,6 +542,16 @@ export default {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
+}
+
+.form-warning-text {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: #8a6d00;
+  background: rgba(255, 193, 7, 0.15);
+  border-left: 3px solid var(--warning-color);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
 }
 
 .unit-toggle {

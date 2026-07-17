@@ -126,6 +126,10 @@
               step="0.1"
               class="form-control"
             />
+            <div class="form-helper-text">{{ targetWeightHint }}</div>
+            <div v-if="goalWeightWarning" class="form-warning-text" role="status">
+              {{ goalWeightWarning }}
+            </div>
           </div>
           
           <div class="form-group">
@@ -228,6 +232,11 @@
 </template>
 
 <script>
+import {
+  getGoalWeightConflict,
+  targetWeightHintForGoal
+} from '@/utils/goalWeightConsistency';
+
 export default {
   name: 'ProfileForm',
   props: {
@@ -239,6 +248,20 @@ export default {
       type: String,
       default: 'personal',
       validator: value => ['personal', 'goals', 'preferences'].includes(value)
+    }
+  },
+  computed: {
+    targetWeightHint() {
+      return targetWeightHintForGoal(this.formData.primaryGoal);
+    },
+    goalWeightWarning() {
+      const currentWeight = this.formData.weight || this.profileData.weight;
+      const conflict = getGoalWeightConflict(
+        this.formData.primaryGoal,
+        currentWeight,
+        this.formData.targetWeight
+      );
+      return conflict ? conflict.message : '';
     }
   },
   data() {
@@ -418,6 +441,22 @@ export default {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
+}
+
+.form-helper-text {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.form-warning-text {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: #8a6d00;
+  background: rgba(255, 193, 7, 0.15);
+  border-left: 3px solid var(--warning-color);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
 }
 
 .checkbox-group {
